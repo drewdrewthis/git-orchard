@@ -1,4 +1,4 @@
-# git-forest
+# git-orchard
 
 Interactive TUI for managing git worktrees, PR status, tmux sessions, and more.
 
@@ -18,15 +18,15 @@ Interactive TUI for managing git worktrees, PR status, tmux sessions, and more.
 ## Install
 
 ```bash
-npm install -g git-forest
+npm install -g git-orchard
 ```
 
 ## Setup
 
-Run `git-forest init` to get a shell wrapper function that enables `cd` and `tmux` integration:
+Run `git-orchard init` to get a shell wrapper function that enables `cd` and `tmux` integration:
 
 ```bash
-git-forest init
+git-orchard init
 ```
 
 Add the printed function to your `~/.zshrc` or `~/.bashrc`, then reload:
@@ -35,14 +35,14 @@ Add the printed function to your `~/.zshrc` or `~/.bashrc`, then reload:
 source ~/.zshrc
 ```
 
-This creates a `forest` command that wraps `git-forest`. Always use `forest` (not `git-forest` directly) so that cd and tmux work.
+This creates an `orchard` command that wraps `git-orchard`. Always use `orchard` (not `git-orchard` directly) so that cd and tmux work.
 
 ## Usage
 
 From any git repository with worktrees:
 
 ```bash
-forest
+orchard
 ```
 
 ### Keybindings
@@ -61,10 +61,10 @@ forest
 ### Commands
 
 ```bash
-forest              # Interactive worktree list
-forest cleanup      # Jump to cleanup view
-forest init         # Print shell wrapper function
-forest --help       # Show help
+orchard              # Interactive worktree list
+orchard cleanup      # Jump to cleanup view
+orchard init         # Print shell wrapper function
+orchard --help       # Show help
 ```
 
 ### What it looks like
@@ -78,7 +78,7 @@ forest --help       # Show help
 │       |        |        |              │
 │       |        |        |              │
 │                                        │
-│        g i t   f o r e s t             │
+│       g i t   o r c h a r d           │
 ╰────────────────────────────────────────╯
 
 ╭────────────────────────────────────────────────────────────╮
@@ -89,6 +89,21 @@ forest --help       # Show help
 ╰────────────────────────────────────────────────────────────╯
 
   enter cd │ t tmux │ o pr │ d delete │ c cleanup │ r refresh │ q quit
+```
+
+## Contributing
+
+1. Fork the repo and create a feature branch
+2. Read [CODEBASE_STANDARDS.md](./CODEBASE_STANDARDS.md) — we follow SOLID, KISS, YAGNI, and CUPID principles
+3. Write tests for pure functions (BetterSpecs style)
+4. Run `pnpm test` and make sure everything passes
+5. Open a PR
+
+```bash
+pnpm install
+pnpm dev          # Run in dev mode
+pnpm test         # Run tests
+pnpm build        # Compile TypeScript
 ```
 
 ## Requirements

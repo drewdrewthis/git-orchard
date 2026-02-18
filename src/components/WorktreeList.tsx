@@ -140,7 +140,7 @@ export function WorktreeList({
         <Text color="green">{"   |        |        |"}</Text>
         <Text color="green">{"   |        |        |"}</Text>
         <Text> </Text>
-        <Text bold color="greenBright">{"g i t   f o r e s t"}</Text>
+        <Text bold color="greenBright">{"g i t   o r c h a r d"}</Text>
       </Box>
 
       <Text> </Text>
@@ -153,6 +153,7 @@ export function WorktreeList({
             isSelected={i === cursor}
             pathWidth={pathWidth}
             branchWidth={branchWidth}
+            rootPath={worktrees[0]?.path || ""}
           />
         ))}
       </Box>

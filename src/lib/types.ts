@@ -17,4 +17,5 @@ export interface PrInfo {
   title: string;
   url: string;
   reviewDecision: ReviewDecision;
+  unresolvedThreads: number;
 }

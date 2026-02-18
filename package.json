@@ -1,11 +1,15 @@
 {
-  "name": "git-forest",
+  "name": "git-orchard",
   "version": "0.1.0",
   "description": "Interactive TUI for managing git worktrees, PR status, and tmux sessions",
   "type": "module",
   "bin": {
-    "git-forest": "./dist/cli.js"
+    "git-orchard": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "!dist/lib/__tests__"
+  ],
   "keywords": [
     "git",
     "worktree",
@@ -19,8 +23,7 @@
   "scripts": {
     "dev": "tsx src/cli.tsx",
     "build": "tsc",
-    "test": "vitest run",
-    "prepublishOnly": "pnpm build"
+    "test": "vitest run"
   },
   "dependencies": {
     "execa": "^9.6.0",

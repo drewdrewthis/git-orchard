@@ -7,9 +7,9 @@ import { handleInit } from "./commands/init.js";
 const cli = meow(
   `
   Usage
-    $ git-forest              Interactive worktree manager
-    $ git-forest init         Print shell function for cd integration
-    $ git-forest cleanup      Find worktrees with merged PRs to remove
+    $ git-orchard              Interactive worktree manager
+    $ git-orchard init         Print shell function for cd integration
+    $ git-orchard cleanup      Find worktrees with merged PRs to remove
 
   Navigation
     ↑/↓     Select worktree

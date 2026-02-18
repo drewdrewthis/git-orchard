@@ -9,8 +9,8 @@ describe("getShellFunction", () => {
   });
 
   it("uses per-uid temp files", () => {
-    expect(fn).toContain("git-forest-cd-target-$uid");
-    expect(fn).toContain("git-forest-tmux-cmd-$uid");
+    expect(fn).toContain("git-orchard-cd-target-$uid");
+    expect(fn).toContain("git-orchard-tmux-cmd-$uid");
   });
 
   it("cleans up temp files after reading", () => {
@@ -18,15 +18,15 @@ describe("getShellFunction", () => {
   });
 
   it("uses command prefix to avoid recursion", () => {
-    expect(fn).toContain("command git-forest");
+    expect(fn).toContain("command git-orchard");
   });
 });
 
 describe("getInitInstructions", () => {
   it("includes the shell function", () => {
     const instructions = getInitInstructions();
-    expect(instructions).toContain("forest()");
-    expect(instructions).toContain("command git-forest");
+    expect(instructions).toContain("orchard()");
+    expect(instructions).toContain("command git-orchard");
   });
 
   it("references the correct rc file for zsh", () => {

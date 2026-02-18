@@ -30,6 +30,9 @@ export function StatusBadge({ pr, loading }: Props) {
         <Box gap={1}>
           <Text color="green">● open</Text>
           <ReviewStatus decision={pr.reviewDecision} />
+          {pr.unresolvedThreads > 0 && (
+            <Text color="yellow">💬 {pr.unresolvedThreads} unresolved</Text>
+          )}
         </Box>
       );
   }

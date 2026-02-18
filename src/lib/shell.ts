@@ -1,18 +1,18 @@
 export function getShellFunction(): string {
-  return `# git-forest - git worktree manager
-forest() {
+  return `# git-orchard - git worktree manager
+orchard() {
   local uid=$(id -u)
   local tmpbase="\${TMPDIR:-/tmp}"
   tmpbase="\${tmpbase%/}"
-  local cdfile="$tmpbase/git-forest-cd-target-$uid"
-  local tmuxfile="$tmpbase/git-forest-tmux-cmd-$uid"
-  command git-forest "$@"
+  local cdfile="$tmpbase/git-orchard-cd-target-$uid"
+  local tmuxfile="$tmpbase/git-orchard-tmux-cmd-$uid"
+  command git-orchard "$@"
   local target tmuxcmd
   target=$(cat "$cdfile" 2>/dev/null)
   tmuxcmd=$(cat "$tmuxfile" 2>/dev/null)
   rm -f "$cdfile" "$tmuxfile"
   if [ -n "$tmuxcmd" ]; then
-    # eval is safe: content is written by git-forest via getTmuxCommand(),
+    # eval is safe: content is written by git-orchard via getTmuxCommand(),
     # file is per-UID (mode 0600), and deleted immediately after reading
     eval "$tmuxcmd"
   elif [ -n "$target" ] && [ -d "$target" ]; then
@@ -32,5 +32,5 @@ ${getShellFunction()}
 Then reload your shell:
   source ${rcFile}
 
-This creates a "forest" command that wraps git-forest so selecting a worktree will cd into it.`;
+This creates an "orchard" command that wraps git-orchard so selecting a worktree will cd into it.`;
 }

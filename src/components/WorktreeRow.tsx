@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import { StatusBadge } from "./StatusBadge.js";
-import { tildify } from "../lib/paths.js";
+import { shortPath } from "../lib/paths.js";
 import type { Worktree } from "../lib/types.js";
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   isSelected: boolean;
   pathWidth: number;
   branchWidth: number;
+  rootPath: string;
 }
 
 export function WorktreeRow({
@@ -15,8 +16,9 @@ export function WorktreeRow({
   isSelected,
   pathWidth,
   branchWidth,
+  rootPath,
 }: Props) {
-  const displayPath = tildify(worktree.path);
+  const displayPath = shortPath(worktree.path, rootPath);
 
   return (
     <Box>
