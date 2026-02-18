@@ -132,43 +132,46 @@ export function WorktreeList({
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor="green" paddingX={2} flexDirection="column">
-        <Box paddingY={1} justifyContent="center" flexDirection="column" alignItems="center">
-          <Text color="green">{`     *        *    *`}</Text>
-          <Text color="green">{`    ***    * ***  ***`}</Text>
-          <Text color="green">{`   *****  *****  *****`}</Text>
-          <Text color="green">{`    |||    |||    |||`}</Text>
-          <Text bold color="greenBright">{`     g i t   f o r e s t`}</Text>
-        </Box>
-
-        <Box flexDirection="column">
-          {worktrees.map((wt, i) => (
-            <WorktreeRow
-              key={wt.path}
-              worktree={wt}
-              isSelected={i === cursor}
-              pathWidth={pathWidth}
-              branchWidth={branchWidth}
-            />
-          ))}
-        </Box>
-
-        <Box paddingY={1} />
+      <Box borderStyle="round" borderColor="green" paddingX={4} paddingY={1} flexDirection="column" alignItems="center">
+        <Text color="green">{"    *          *       *"}</Text>
+        <Text color="green">{"   ***        ***     ***"}</Text>
+        <Text color="green">{"  *****    * *****   *****"}</Text>
+        <Text color="green">{" *******  *** ***   *******"}</Text>
+        <Text color="green">{"    |      *****       |"}</Text>
+        <Text color="green">{"    |        |         |"}</Text>
+        <Text> </Text>
+        <Text bold color="greenBright">{"g i t   f o r e s t"}</Text>
       </Box>
 
-      <Box paddingX={1} paddingY={1} flexDirection="row" gap={1} justifyContent="center">
+      <Text> </Text>
+
+      <Box borderStyle="round" borderColor="gray" paddingX={2} paddingY={1} flexDirection="column">
+        {worktrees.map((wt, i) => (
+          <WorktreeRow
+            key={wt.path}
+            worktree={wt}
+            isSelected={i === cursor}
+            pathWidth={pathWidth}
+            branchWidth={branchWidth}
+          />
+        ))}
+      </Box>
+
+      <Text> </Text>
+
+      <Box paddingX={1} flexDirection="row" gap={1} justifyContent="center">
         <KeyHint label="enter" desc="cd" />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="t" desc="tmux" />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="o" desc="pr" dimmed={!hasPr} />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="d" desc="delete" />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="c" desc="cleanup" />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="r" desc="refresh" />
-        <Text dimColor>|</Text>
+        <Text dimColor>{"\u2502"}</Text>
         <KeyHint label="q" desc="quit" />
       </Box>
     </Box>
