@@ -16,20 +16,19 @@ export function WorktreeRow({
   pathWidth,
   branchWidth,
 }: Props) {
-  const pointer = isSelected ? "▸" : " ";
   const displayPath = tildify(worktree.path);
 
   return (
     <Box>
       <Text color={isSelected ? "cyan" : undefined} bold={isSelected}>
-        {pointer}{" "}
+        {isSelected ? " >" : "  "}{" "}
       </Text>
       <Box width={pathWidth}>
-        <Text color={isSelected ? "cyan" : undefined} wrap="truncate">
+        <Text color={isSelected ? "cyan" : undefined} bold={isSelected} wrap="truncate">
           {displayPath}
         </Text>
       </Box>
-      <Text> </Text>
+      <Text>  </Text>
       <Box width={branchWidth}>
         <Text
           color="yellow"
@@ -39,7 +38,7 @@ export function WorktreeRow({
           {worktree.branch || "(detached)"}
         </Text>
       </Box>
-      <Text> </Text>
+      <Text>  </Text>
       {worktree.isBare ? (
         <Text dimColor>(bare)</Text>
       ) : (
@@ -50,7 +49,7 @@ export function WorktreeRow({
       )}
       {worktree.tmuxSession && (
         <>
-          <Text> </Text>
+          <Text>  </Text>
           <Text color={worktree.tmuxAttached ? "green" : "blue"}>
             {worktree.tmuxAttached ? "▶" : "◼"} tmux:{worktree.tmuxSession}
           </Text>

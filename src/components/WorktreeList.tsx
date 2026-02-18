@@ -88,30 +88,43 @@ export function WorktreeList({
 
   if (loading) {
     return (
-      <Text>
-        <Spinner type="dots" /> Loading worktrees...
-      </Text>
+      <Box borderStyle="round" borderColor="green" paddingX={2} paddingY={1} flexDirection="column" alignItems="center">
+        <Text>
+          <Spinner type="dots" />{" "}
+          <Text color="green">Loading worktrees...</Text>
+        </Text>
+      </Box>
     );
   }
 
   if (error) {
-    return <Text color="red">Error: {error}</Text>;
+    return (
+      <Box borderStyle="round" borderColor="red" paddingX={2} paddingY={1}>
+        <Text color="red">Error: {error}</Text>
+      </Box>
+    );
   }
 
   if (worktrees.length === 0) {
-    return <Text dimColor>No worktrees found.</Text>;
+    return (
+      <Box borderStyle="round" borderColor="yellow" paddingX={2} paddingY={1}>
+        <Text dimColor>No worktrees found.</Text>
+      </Box>
+    );
   }
 
   if (confirmDelete) {
     return (
-      <ConfirmDelete
-        worktree={confirmDelete}
-        onDone={() => {
-          setConfirmDelete(null);
-          onRefresh();
-        }}
-        onCancel={() => setConfirmDelete(null)}
-      />
+      <Box borderStyle="round" borderColor="red" paddingX={2} paddingY={1}>
+        <ConfirmDelete
+          worktree={confirmDelete}
+          onDone={() => {
+            setConfirmDelete(null);
+            onRefresh();
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      </Box>
     );
   }
 
@@ -119,25 +132,43 @@ export function WorktreeList({
 
   return (
     <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text bold color="green">Welcome to the Git Forest</Text>
+      <Box borderStyle="round" borderColor="green" paddingX={2} flexDirection="column">
+        <Box paddingY={1} justifyContent="center" flexDirection="column" alignItems="center">
+          <Text color="green">{`     *        *    *`}</Text>
+          <Text color="green">{`    ***    * ***  ***`}</Text>
+          <Text color="green">{`   *****  *****  *****`}</Text>
+          <Text color="green">{`    |||    |||    |||`}</Text>
+          <Text bold color="greenBright">{`     g i t   f o r e s t`}</Text>
+        </Box>
+
+        <Box flexDirection="column">
+          {worktrees.map((wt, i) => (
+            <WorktreeRow
+              key={wt.path}
+              worktree={wt}
+              isSelected={i === cursor}
+              pathWidth={pathWidth}
+              branchWidth={branchWidth}
+            />
+          ))}
+        </Box>
+
+        <Box paddingY={1} />
       </Box>
-      {worktrees.map((wt, i) => (
-        <WorktreeRow
-          key={wt.path}
-          worktree={wt}
-          isSelected={i === cursor}
-          pathWidth={pathWidth}
-          branchWidth={branchWidth}
-        />
-      ))}
-      <Box marginTop={1} flexDirection="row" gap={1}>
+
+      <Box paddingX={1} paddingY={1} flexDirection="row" gap={1} justifyContent="center">
         <KeyHint label="enter" desc="cd" />
+        <Text dimColor>|</Text>
         <KeyHint label="t" desc="tmux" />
-        <KeyHint label="o" desc="open pr" dimmed={!hasPr} />
+        <Text dimColor>|</Text>
+        <KeyHint label="o" desc="pr" dimmed={!hasPr} />
+        <Text dimColor>|</Text>
         <KeyHint label="d" desc="delete" />
+        <Text dimColor>|</Text>
         <KeyHint label="c" desc="cleanup" />
+        <Text dimColor>|</Text>
         <KeyHint label="r" desc="refresh" />
+        <Text dimColor>|</Text>
         <KeyHint label="q" desc="quit" />
       </Box>
     </Box>
@@ -148,7 +179,7 @@ function KeyHint({ label, desc, dimmed }: { label: string; desc: string; dimmed?
   if (dimmed) {
     return (
       <Text dimColor>
-        <Text>{label}</Text> {desc}
+        {label} {desc}
       </Text>
     );
   }
