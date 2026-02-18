@@ -30,5 +30,6 @@ const command = cli.input[0];
 if (command === "init") {
   handleInit();
 } else {
-  render(<App command={command} />);
+  const app = render(<App command={command} />);
+  await app.waitUntilExit();
 }
