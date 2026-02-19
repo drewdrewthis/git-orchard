@@ -19,6 +19,11 @@ export function ConfirmDelete({ worktree, onDone, onCancel }: Props) {
   useInput(async (input, key) => {
     if (deleting) return;
 
+    if (error) {
+      onCancel();
+      return;
+    }
+
     if (input === "y" || input === "Y") {
       setDeleting(true);
       try {

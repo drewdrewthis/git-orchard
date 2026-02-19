@@ -1,9 +1,29 @@
 import { execaSync, execa } from "execa";
+import { resolve } from "node:path";
 import type { Worktree } from "./types.js";
 
+function findRepoRoot(): string {
+  const { stdout } = execaSync("git", ["rev-parse", "--show-toplevel"]);
+  return stdout.trim();
+}
+
+function resolveMainWorktreePath(gitDir: string): string {
+  try {
+    const { stdout } = execaSync("git", ["config", "--get", "core.worktree"], {
+      env: { ...process.env, GIT_DIR: gitDir },
+    });
+    return resolve(gitDir, stdout.trim());
+  } catch {
+    return gitDir;
+  }
+}
+
 export function listWorktrees(): Worktree[] {
-  const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"]);
-  return parsePorcelain(stdout);
+  const cwd = findRepoRoot();
+  const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"], { cwd });
+  return parsePorcelain(stdout).map((wt) =>
+    wt.path.includes("/.git/") ? { ...wt, path: resolveMainWorktreePath(wt.path) } : wt
+  );
 }
 
 export function parsePorcelain(output: string): Worktree[] {
