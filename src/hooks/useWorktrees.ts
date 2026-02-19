@@ -35,7 +35,7 @@ export function useWorktrees() {
       });
 
       if (!ghOk) {
-        setWorktrees(withTmux.map((t) => ({ ...t, prLoading: false })));
+        setWorktrees(withTmux);
         return;
       }
 

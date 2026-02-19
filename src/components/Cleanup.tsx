@@ -21,7 +21,7 @@ export function Cleanup({ worktrees, onDone }: Props) {
   const [deleted, setDeleted] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useInput(async (input, key) => {
+  useInput((input, key) => {
     if (deleting) return;
 
     if (key.upArrow) {
@@ -44,21 +44,23 @@ export function Cleanup({ worktrees, onDone }: Props) {
         return;
       }
       setDeleting(true);
-      for (const path of selected) {
-        try {
-          const wt = merged.find((w) => w.path === path);
-          if (wt?.tmuxSession) {
-            try { await killTmuxSession(wt.tmuxSession); } catch { /* ok */ }
+      (async () => {
+        for (const path of selected) {
+          try {
+            const wt = merged.find((w) => w.path === path);
+            if (wt?.tmuxSession) {
+              try { await killTmuxSession(wt.tmuxSession); } catch { /* ok */ }
+            }
+            await removeWorktree(path, true);
+            setDeleted((prev) => [...prev, path]);
+          } catch (err) {
+            setError(
+              `Failed to remove ${path}: ${err instanceof Error ? err.message : "unknown error"}`
+            );
           }
-          await removeWorktree(path, true);
-          setDeleted((prev) => [...prev, path]);
-        } catch (err) {
-          setError(
-            `Failed to remove ${path}: ${err instanceof Error ? err.message : "unknown error"}`
-          );
         }
-      }
-      setDeleting(false);
+        setDeleting(false);
+      })().catch((err) => setError(err instanceof Error ? err.message : "unknown error"));
     } else if (input === "q" || key.escape) {
       onDone();
     }

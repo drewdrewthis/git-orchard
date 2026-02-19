@@ -13,8 +13,11 @@ describe("getShellFunction", () => {
     expect(fn).toContain("git-orchard-tmux-cmd-$uid");
   });
 
-  it("cleans up temp files after reading", () => {
-    expect(fn).toContain('rm -f "$cdfile" "$tmuxfile"');
+  it("atomically moves files before reading to avoid TOCTOU race", () => {
+    expect(fn).toContain('mv "$cdfile" "$cdtmp"');
+    expect(fn).toContain('mv "$tmuxfile" "$tmptmp"');
+    expect(fn).toContain('rm -f "$cdtmp"');
+    expect(fn).toContain('rm -f "$tmptmp"');
   });
 
   it("uses command prefix to avoid recursion", () => {

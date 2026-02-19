@@ -8,12 +8,12 @@ orchard() {
   local tmuxfile="$tmpbase/git-orchard-tmux-cmd-$uid"
   command git-orchard "$@"
   local target tmuxcmd
-  target=$(cat "$cdfile" 2>/dev/null)
-  tmuxcmd=$(cat "$tmuxfile" 2>/dev/null)
-  rm -f "$cdfile" "$tmuxfile"
+  local cdtmp tmptmp
+  cdtmp="$tmpbase/git-orchard-cd-read-$$"
+  tmptmp="$tmpbase/git-orchard-tmux-read-$$"
+  mv "$cdfile" "$cdtmp" 2>/dev/null; target=$(cat "$cdtmp" 2>/dev/null); rm -f "$cdtmp"
+  mv "$tmuxfile" "$tmptmp" 2>/dev/null; tmuxcmd=$(cat "$tmptmp" 2>/dev/null); rm -f "$tmptmp"
   if [ -n "$tmuxcmd" ]; then
-    # eval is safe: content is written by git-orchard via getTmuxCommand(),
-    # file is per-UID (mode 0600), and deleted immediately after reading
     eval "$tmuxcmd"
   elif [ -n "$target" ] && [ -d "$target" ]; then
     cd "$target" || return

@@ -16,7 +16,7 @@ export function ConfirmDelete({ worktree, onDone, onCancel }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useInput(async (input, key) => {
+  useInput((input, key) => {
     if (deleting) return;
 
     if (error) {
@@ -26,26 +26,17 @@ export function ConfirmDelete({ worktree, onDone, onCancel }: Props) {
 
     if (input === "y" || input === "Y") {
       setDeleting(true);
-      try {
+      (async () => {
         if (worktree.tmuxSession) {
-          try {
-            await killTmuxSession(worktree.tmuxSession);
-          } catch {
-            // session may already be dead
-          }
+          try { await killTmuxSession(worktree.tmuxSession); } catch { /* session may already be dead */ }
         }
-        await removeWorktree(worktree.path);
-        onDone();
-      } catch {
         try {
+          await removeWorktree(worktree.path);
+        } catch {
           await removeWorktree(worktree.path, true);
-          onDone();
-        } catch (err2) {
-          setError(
-            err2 instanceof Error ? err2.message : "Failed to delete"
-          );
         }
-      }
+        onDone();
+      })().catch((err) => setError(err instanceof Error ? err.message : "Failed to delete"));
     } else if (input === "n" || input === "N" || key.escape) {
       onCancel();
     }

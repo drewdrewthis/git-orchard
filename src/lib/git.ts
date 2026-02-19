@@ -67,6 +67,6 @@ export async function removeWorktree(
   force = false
 ): Promise<void> {
   const args = ["worktree", "remove", path];
-  if (force) args.push("--force", "--force");
+  if (force) args.push("--force");
   await execa("git", args);
 }

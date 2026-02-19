@@ -1,9 +1,15 @@
 import { execa } from "execa";
 import type { PrInfo, ReviewDecision } from "./types.js";
 
-let cachedRepo: { owner: string; name: string } | null = null;
+type Repo = { owner: string; name: string };
 
-async function getRepo(): Promise<{ owner: string; name: string }> {
+let cachedRepo: Repo | null = null;
+
+export function resetRepoCache() {
+  cachedRepo = null;
+}
+
+async function getRepo(): Promise<Repo> {
   if (cachedRepo) return cachedRepo;
   const { stdout } = await execa("gh", ["repo", "view", "--json", "owner,name"]);
   const { owner, name } = JSON.parse(stdout);
@@ -14,18 +20,24 @@ async function getRepo(): Promise<{ owner: string; name: string }> {
 async function getUnresolvedThreads(prNumber: number): Promise<number> {
   try {
     const { owner, name } = await getRepo();
-    const query = `{
-      repository(owner: "${owner}", name: "${name}") {
-        pullRequest(number: ${prNumber}) {
-          reviewThreads(first: 100) {
-            nodes { isResolved }
+    const query = `
+      query($owner: String!, $name: String!, $number: Int!) {
+        repository(owner: $owner, name: $name) {
+          pullRequest(number: $number) {
+            reviewThreads(first: 100) {
+              nodes { isResolved }
+            }
           }
         }
       }
-    }`;
+    `;
 
     const { stdout } = await execa("gh", [
-      "api", "graphql", "-f", `query=${query}`,
+      "api", "graphql",
+      "-f", `query=${query}`,
+      "-f", `owner=${owner}`,
+      "-f", `name=${name}`,
+      "-F", `number=${prNumber}`,
     ]);
 
     const data = JSON.parse(stdout);

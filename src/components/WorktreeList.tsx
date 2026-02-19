@@ -59,7 +59,7 @@ export function WorktreeList({
       }
     } else if (input === "t") {
       if (selected && !selected.isBare) {
-        const sessionName = selected.branch?.replace(/\//g, "-") || selected.path.split("/").pop() || "forest";
+        const sessionName = selected.branch?.replace(/\//g, "-") || selected.path.split("/").pop() || "orchard";
         const cmd = getTmuxCommand(selected.path, sessionName, selected.tmuxSession);
         cleanTempFiles();
         try {

@@ -1,9 +1,9 @@
-import { tmpdir } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 
 export const HOME_DIR = process.env.HOME || "";
 
-const uid = process.getuid?.() ?? "default";
+const uid = process.getuid?.() ?? userInfo().username;
 
 export const CD_TARGET_FILE = join(tmpdir(), `git-orchard-cd-target-${uid}`);
 
