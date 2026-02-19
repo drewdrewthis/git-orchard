@@ -7,6 +7,18 @@
 - **YAGNI** — Don't build it until you need it
 - **CUPID** — Composable, Unix-philosophy, predictable, idiomatic, domain-based
 
+## Commits
+
+All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>: <description>
+
+Types: feat, fix, chore, refactor, test, docs, perf, ci
+```
+
+This is required for automated releases via [Release Please](https://github.com/googleapis/release-please) (planned).
+
 ## Testing
 
 - All pure functions must have tests
