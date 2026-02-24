@@ -1,5 +1,6 @@
 import { execa } from "execa";
-import type { PrInfo } from "./types.js";
+import { resolvePrStatus } from "./types.js";
+import type { PrInfo, PrStatus } from "./types.js";
 
 export interface TmuxSession {
   name: string;
@@ -96,23 +97,24 @@ export function formatStatusLeft(
   const parts = [`#[fg=colour2,bold] ${branchLabel} #[fg=colour248,nobold]`];
 
   if (pr) {
-    const stateIcon = prStateIcon(pr.state);
-    parts.push(`PR#${pr.number} ${stateIcon}`);
+    const status = resolvePrStatus(pr);
+    const { icon, label } = tmuxStatusLabels[status];
+    parts.push(`PR#${pr.number} ${icon} ${label}`);
   }
 
   return shellEscape(parts.join(" "));
 }
 
-function prStateIcon(state: PrInfo["state"]): string {
-  switch (state) {
-    case "open":
-      return "\u25cf open";
-    case "merged":
-      return "\u2713 merged";
-    case "closed":
-      return "\u2717 closed";
-  }
-}
+const tmuxStatusLabels: Record<PrStatus, { icon: string; label: string }> = {
+  failing:           { icon: "\u2717", label: "failing" },
+  unresolved:        { icon: "\u25cf", label: "unresolved" },
+  changes_requested: { icon: "\u25cf", label: "changes" },
+  review_needed:     { icon: "\u25cb", label: "review" },
+  pending_ci:        { icon: "\u25cb", label: "pending" },
+  approved:          { icon: "\u2713", label: "ready" },
+  merged:            { icon: "\u2713", label: "merged" },
+  closed:            { icon: "\u2717", label: "closed" },
+};
 
 function shellEscape(s: string): string {
   return `'${s.replace(/'/g, "'\\''")}'`;

@@ -97,6 +97,7 @@ const openPr: PrInfo = {
   url: "https://github.com/org/repo/pull/42",
   reviewDecision: "",
   unresolvedThreads: 0,
+  checksStatus: "pass",
 };
 
 describe("getTmuxCommand", () => {
@@ -146,7 +147,7 @@ describe("getTmuxCommand", () => {
       pr: openPr,
     });
     expect(cmd).toContain("PR#42");
-    expect(cmd).toContain("open");
+    expect(cmd).toContain("review");
   });
 
   it("includes detach hint in status right", () => {
@@ -174,21 +175,33 @@ describe("formatStatusLeft", () => {
     expect(result).toContain("detached");
   });
 
-  it("shows open PR with bullet icon", () => {
+  it("shows unified status for open PR needing review", () => {
     const result = formatStatusLeft("feat/login", openPr);
     expect(result).toContain("PR#42");
-    expect(result).toContain("\u25cf open");
+    expect(result).toContain("review");
   });
 
-  it("shows merged PR with check icon", () => {
+  it("shows merged status", () => {
     const mergedPr: PrInfo = { ...openPr, state: "merged" };
     const result = formatStatusLeft("feat/login", mergedPr);
     expect(result).toContain("\u2713 merged");
   });
 
-  it("shows closed PR with cross icon", () => {
+  it("shows closed status", () => {
     const closedPr: PrInfo = { ...openPr, state: "closed" };
     const result = formatStatusLeft("feat/login", closedPr);
     expect(result).toContain("\u2717 closed");
+  });
+
+  it("shows failing when checks fail", () => {
+    const failingPr: PrInfo = { ...openPr, checksStatus: "fail" };
+    const result = formatStatusLeft("feat/login", failingPr);
+    expect(result).toContain("\u2717 failing");
+  });
+
+  it("shows ready when approved with passing checks", () => {
+    const readyPr: PrInfo = { ...openPr, reviewDecision: "APPROVED", checksStatus: "pass" };
+    const result = formatStatusLeft("feat/login", readyPr);
+    expect(result).toContain("\u2713 ready");
   });
 });

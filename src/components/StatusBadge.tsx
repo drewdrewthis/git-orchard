@@ -1,6 +1,7 @@
-import { Box, Text } from "ink";
+import { Text } from "ink";
 import Spinner from "ink-spinner";
-import type { PrInfo } from "../lib/types.js";
+import { resolvePrStatus } from "../lib/types.js";
+import type { PrInfo, PrStatus } from "../lib/types.js";
 
 interface Props {
   pr: PrInfo | null;
@@ -20,33 +21,18 @@ export function StatusBadge({ pr, loading }: Props) {
     return <Text dimColor>no PR</Text>;
   }
 
-  switch (pr.state) {
-    case "merged":
-      return <Text color="magenta">✓ merged</Text>;
-    case "closed":
-      return <Text color="red">✕ closed</Text>;
-    case "open":
-      return (
-        <Box gap={1}>
-          <Text color="green">● open</Text>
-          <ReviewStatus decision={pr.reviewDecision} />
-          {pr.unresolvedThreads > 0 && (
-            <Text color="yellow">💬 {pr.unresolvedThreads} unresolved</Text>
-          )}
-        </Box>
-      );
-  }
+  const status = resolvePrStatus(pr);
+  const { icon, label, color } = statusDisplay[status];
+  return <Text color={color}>{icon} {label}</Text>;
 }
 
-function ReviewStatus({ decision }: { decision: string }) {
-  switch (decision) {
-    case "APPROVED":
-      return <Text color="green">✓ approved</Text>;
-    case "CHANGES_REQUESTED":
-      return <Text color="red">✎ changes requested</Text>;
-    case "REVIEW_REQUIRED":
-      return <Text color="yellow">◌ review needed</Text>;
-    default:
-      return null;
-  }
-}
+const statusDisplay: Record<PrStatus, { icon: string; label: string; color: string }> = {
+  failing:           { icon: "✕", label: "failing",          color: "red" },
+  unresolved:        { icon: "💬", label: "unresolved",       color: "yellow" },
+  changes_requested: { icon: "✎", label: "changes requested", color: "red" },
+  review_needed:     { icon: "◌", label: "review needed",     color: "yellow" },
+  pending_ci:        { icon: "◌", label: "pending",           color: "yellow" },
+  approved:          { icon: "✓", label: "ready",             color: "green" },
+  merged:            { icon: "✓", label: "merged",            color: "magenta" },
+  closed:            { icon: "✕", label: "closed",            color: "red" },
+};
