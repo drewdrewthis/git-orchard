@@ -60,7 +60,13 @@ export function WorktreeList({
     } else if (input === "t") {
       if (selected && !selected.isBare) {
         const sessionName = selected.branch?.replace(/\//g, "-") || selected.path.split("/").pop() || "orchard";
-        const cmd = getTmuxCommand(selected.path, sessionName, selected.tmuxSession);
+        const cmd = getTmuxCommand({
+          worktreePath: selected.path,
+          sessionName,
+          existingSession: selected.tmuxSession,
+          branch: selected.branch,
+          pr: selected.pr,
+        });
         cleanTempFiles();
         try {
           writeFileSync(TMUX_CMD_FILE, cmd, { mode: 0o600 });

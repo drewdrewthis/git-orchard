@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import type { PrInfo } from "./types.js";
 
 export interface TmuxSession {
   name: string;
@@ -52,15 +53,65 @@ export async function killTmuxSession(sessionName: string): Promise<void> {
   await execa("tmux", ["kill-session", "-t", sessionName]);
 }
 
-export function getTmuxCommand(
-  worktreePath: string,
-  sessionName: string,
-  existingSession: string | null
-): string {
+export interface TmuxCommandOptions {
+  worktreePath: string;
+  sessionName: string;
+  existingSession: string | null;
+  branch: string | null;
+  pr: PrInfo | null;
+}
+
+export function getTmuxCommand(opts: TmuxCommandOptions): string {
+  const { worktreePath, sessionName, existingSession, branch, pr } = opts;
+
   if (existingSession) {
     return `tmux attach-session -t ${shellEscape(existingSession)}`;
   }
-  return `tmux new-session -s ${shellEscape(sessionName)} -c ${shellEscape(worktreePath)}`;
+
+  const statusLeft = formatStatusLeft(branch, pr);
+  const statusRight = "'#[fg=colour8]^B d detach  ^B o orchard'";
+
+  const setOptions = [
+    `set-option status on`,
+    `set-option status-style 'bg=colour235,fg=colour248'`,
+    `set-option status-left-length 60`,
+    `set-option status-right-length 40`,
+    `set-option status-left ${statusLeft}`,
+    `set-option status-right ${statusRight}`,
+    `bind-key o display-popup -E -w 80% -h 80% 'git-orchard'`,
+  ];
+
+  const escapedName = shellEscape(sessionName);
+  const escapedPath = shellEscape(worktreePath);
+  const setOptionsCmds = setOptions.map((cmd) => `\\; ${cmd}`).join(" ");
+
+  return `tmux new-session -s ${escapedName} -c ${escapedPath} ${setOptionsCmds}`;
+}
+
+export function formatStatusLeft(
+  branch: string | null,
+  pr: PrInfo | null
+): string {
+  const branchLabel = branch ?? "detached";
+  const parts = [`#[fg=colour2,bold] ${branchLabel} #[fg=colour248,nobold]`];
+
+  if (pr) {
+    const stateIcon = prStateIcon(pr.state);
+    parts.push(`PR#${pr.number} ${stateIcon}`);
+  }
+
+  return shellEscape(parts.join(" "));
+}
+
+function prStateIcon(state: PrInfo["state"]): string {
+  switch (state) {
+    case "open":
+      return "\u25cf open";
+    case "merged":
+      return "\u2713 merged";
+    case "closed":
+      return "\u2717 closed";
+  }
 }
 
 function shellEscape(s: string): string {
