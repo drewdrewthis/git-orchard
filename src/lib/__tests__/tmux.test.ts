@@ -135,7 +135,9 @@ describe("getTmuxCommand", () => {
       branch: "main",
       pr: null,
     });
-    expect(cmd).toContain("bind-key o display-popup -E -w 80% -h 80% 'git-orchard'");
+    expect(cmd).toContain("bind-key o display-popup -E -w 80% -h 80%");
+    expect(cmd).toContain("git-orchard; uid=$(id -u)");
+    expect(cmd).toContain("git-orchard-tmux-cmd-$uid");
   });
 
   it("includes PR info in status left when PR exists", () => {

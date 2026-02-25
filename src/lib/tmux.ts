@@ -79,7 +79,7 @@ export function getTmuxCommand(opts: TmuxCommandOptions): string {
     `set-option status-right-length 40`,
     `set-option status-left ${statusLeft}`,
     `set-option status-right ${statusRight}`,
-    `bind-key o display-popup -E -w 80% -h 80% 'git-orchard'`,
+    `bind-key o display-popup -E -w 80% -h 80% 'git-orchard; uid=\$(id -u); f="\${TMPDIR:-/tmp}"; f="\${f%/}/git-orchard-tmux-cmd-\$uid"; if [ -f "\$f" ]; then cmd=\$(cat "\$f"); rm -f "\$f"; eval "\$cmd"; fi'`,
   ];
 
   const escapedName = shellEscape(sessionName);
