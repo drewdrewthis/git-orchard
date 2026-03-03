@@ -124,7 +124,7 @@ async function sessionExists(
   }
 }
 
-const CHEATSHEET = "#[fg=colour8]^B o orchard  ^B ( prev  ^B ) next  ^B % vert  ^B \" horiz  ^B arrows pane  ^B z zoom  ^B x close  ^B d detach";
+const CHEATSHEET = "#[fg=colour8]o: orchard | (/):#[fg=colour8] prev/next | %: split-v | \": split-h | arrows: pane | z: zoom | x: close | d: detach";
 
 async function applySessionStyle(
   sessionName: string,
