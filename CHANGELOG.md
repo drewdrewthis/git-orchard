@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.4](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.3...git-orchard-v0.1.4) (2026-03-03)
+
+
+### Features
+
+* add file-based debug logging infrastructure ([3e034bb](https://github.com/drewdrewthis/git-orchard/commit/3e034bb97537901bbe52dc02c6b27be53a3410d1))
+* add TitledBox to worktree list and preview pane ([09efe53](https://github.com/drewdrewthis/git-orchard/commit/09efe53cf77f0727c099f1235fb724842ef856a4))
+* new banner, number key navigation, upgrade command, consistent table columns ([fcd970d](https://github.com/drewdrewthis/git-orchard/commit/fcd970d38251be432a6e571565a25f43c32354ff))
+
+
+### Bug Fixes
+
+* cleanup view loses state on background refresh and fails on broken worktrees ([93b22f9](https://github.com/drewdrewthis/git-orchard/commit/93b22f97467699503553dc2d6e97a86028f352b6))
+* escape % in tmux cheatsheet and add prefix key hint ([59bb52b](https://github.com/drewdrewthis/git-orchard/commit/59bb52b14af444356e1e67191349b4a48030de43))
+* simplify tmux cheatsheet to key: action format ([f5b1d38](https://github.com/drewdrewthis/git-orchard/commit/f5b1d38e84f65d4eee8bfa127831a0bde7afc3f6))
+* tmux cheatsheet shows arrows instead of ←→ for pane navigation ([7222174](https://github.com/drewdrewthis/git-orchard/commit/7222174648821aeee0967b3b6f09cb81496bf8c9))
+
 ## [0.1.3](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.2...git-orchard-v0.1.3) (2026-03-03)
 
 
