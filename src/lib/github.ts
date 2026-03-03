@@ -31,14 +31,17 @@ export async function getAllPrs(): Promise<Map<string, PrInfo>> {
 
     const results: RawPr[] = JSON.parse(stdout);
     const prMap = new Map<string, PrInfo>();
+    const validStates = new Set(["open", "merged", "closed"]);
 
     for (const raw of results) {
       if (prMap.has(raw.headRefName)) continue;
 
-      const state = raw.state.toLowerCase() as PrInfo["state"];
+      const state = raw.state.toLowerCase();
+      if (!validStates.has(state)) continue;
+
       prMap.set(raw.headRefName, {
         number: raw.number,
-        state,
+        state: state as PrInfo["state"],
         title: raw.title,
         url: raw.url,
         reviewDecision: (raw.reviewDecision || "") as ReviewDecision,
@@ -65,7 +68,10 @@ export async function getAllPrs(): Promise<Map<string, PrInfo>> {
 export async function enrichPrDetails(
   prMap: Map<string, PrInfo>
 ): Promise<void> {
-  const openPrs = [...prMap.entries()].filter(([, pr]) => pr.state === "open");
+  const MAX_ENRICH_BATCH = 25;
+  const openPrs = [...prMap.entries()]
+    .filter(([, pr]) => pr.state === "open")
+    .slice(0, MAX_ENRICH_BATCH);
   if (openPrs.length === 0) return;
 
   try {
@@ -180,10 +186,6 @@ export function deriveChecksStatus(contexts: CheckContext[]): ChecksStatus {
 type Repo = { owner: string; name: string };
 
 let cachedRepo: Repo | null = null;
-
-export function resetRepoCache() {
-  cachedRepo = null;
-}
 
 async function getRepo(): Promise<Repo> {
   if (cachedRepo) return cachedRepo;

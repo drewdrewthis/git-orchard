@@ -4,8 +4,65 @@ import { getAllPrs, enrichPrDetails, isGhAvailable } from "../lib/github.js";
 import { listTmuxSessions, findSessionForWorktree } from "../lib/tmux.js";
 import { log } from "../lib/log.js";
 import type { Worktree } from "../lib/types.js";
+import type { TmuxSession } from "../lib/tmux.js";
+import type { PrInfo } from "../lib/types.js";
 
 const AUTO_REFRESH_MS = 60_000;
+
+export function fetchGitWorktrees(): Worktree[] {
+  log.time("phase:git");
+  const trees = listWorktrees();
+  log.timeEnd("phase:git");
+  log.info(`worktrees: ${trees.length} found`);
+  return trees;
+}
+
+export async function fetchTmuxAndGh(): Promise<{ sessions: TmuxSession[]; ghOk: boolean }> {
+  log.time("phase:tmux+gh");
+  const [sessions, ghOk] = await Promise.all([
+    listTmuxSessions(),
+    isGhAvailable(),
+  ]);
+  log.timeEnd("phase:tmux+gh");
+  return { sessions, ghOk };
+}
+
+export function mergeTmuxSessions(
+  trees: Worktree[],
+  sessions: TmuxSession[],
+  ghOk: boolean
+): Worktree[] {
+  return trees.map((tree) => {
+    const session = findSessionForWorktree(sessions, tree.path, tree.branch);
+    return {
+      ...tree,
+      tmuxSession: session?.name ?? null,
+      tmuxAttached: session?.attached ?? false,
+      prLoading: !tree.isBare && !!tree.branch && ghOk,
+    };
+  });
+}
+
+export async function fetchPrBasics(): Promise<Map<string, PrInfo>> {
+  log.time("phase:pr-basics");
+  const prMap = await getAllPrs();
+  log.timeEnd("phase:pr-basics");
+  log.info(`PRs: ${prMap.size} found`);
+  return prMap;
+}
+
+export function applyPrs(base: Worktree[], prMap: Map<string, PrInfo>): Worktree[] {
+  return base.map((tree) => {
+    if (!tree.branch || tree.isBare) return { ...tree, prLoading: false };
+    return { ...tree, pr: prMap.get(tree.branch) ?? null, prLoading: false };
+  });
+}
+
+export async function enrichPrs(prMap: Map<string, PrInfo>): Promise<void> {
+  log.time("phase:pr-enrich");
+  await enrichPrDetails(prMap);
+  log.timeEnd("phase:pr-enrich");
+}
 
 export function useWorktrees() {
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
@@ -15,31 +72,12 @@ export function useWorktrees() {
 
   const refresh = useCallback(async () => {
     try {
-      // Phase 1: git data (synchronous, fast)
-      log.time("phase:git");
-      const trees = listWorktrees();
-      log.timeEnd("phase:git");
-      log.info(`worktrees: ${trees.length} found`);
-      setWorktrees(trees.map((t) => ({ ...t, prLoading: !t.isBare && !!t.branch })));
+      const trees = fetchGitWorktrees();
+      setWorktrees(trees.map((tree) => ({ ...tree, prLoading: !tree.isBare && !!tree.branch })));
       setLoading(false);
 
-      // Phase 2: tmux + gh check (parallel)
-      log.time("phase:tmux+gh");
-      const [sessions, ghOk] = await Promise.all([
-        listTmuxSessions(),
-        isGhAvailable(),
-      ]);
-      log.timeEnd("phase:tmux+gh");
-
-      const withTmux = trees.map((t) => {
-        const session = findSessionForWorktree(sessions, t.path, t.branch);
-        return {
-          ...t,
-          tmuxSession: session?.name ?? null,
-          tmuxAttached: session?.attached ?? false,
-          prLoading: !t.isBare && !!t.branch && ghOk,
-        };
-      });
+      const { sessions, ghOk } = await fetchTmuxAndGh();
+      const withTmux = mergeTmuxSessions(trees, sessions, ghOk);
 
       if (!ghOk) {
         setWorktrees(withTmux);
@@ -48,24 +86,11 @@ export function useWorktrees() {
 
       setWorktrees(withTmux);
 
-      // Phase 3: batch fetch PR basics (fast -- no statusCheckRollup)
-      log.time("phase:pr-basics");
-      const prMap = await getAllPrs();
-      log.timeEnd("phase:pr-basics");
-      log.info(`PRs: ${prMap.size} found`);
-      const applyPrs = (base: Worktree[]) =>
-        base.map((t) => {
-          if (!t.branch || t.isBare) return { ...t, prLoading: false };
-          return { ...t, pr: prMap.get(t.branch) ?? null, prLoading: false };
-        });
+      const prMap = await fetchPrBasics();
+      setWorktrees(applyPrs(withTmux, prMap));
 
-      setWorktrees(applyPrs(withTmux));
-
-      // Phase 4: enrich open PRs with checks + threads (slow, non-blocking)
-      log.time("phase:pr-enrich");
-      await enrichPrDetails(prMap);
-      log.timeEnd("phase:pr-enrich");
-      setWorktrees(applyPrs(withTmux));
+      await enrichPrs(prMap);
+      setWorktrees(applyPrs(withTmux, prMap));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to list worktrees";
       log.error(`refresh failed: ${message}`);

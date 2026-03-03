@@ -22,8 +22,8 @@ function resolveMainWorktreePath(gitDir: string): string {
 export function listWorktrees(): Worktree[] {
   const cwd = findRepoRoot();
   const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"], { cwd });
-  const trees = parsePorcelain(stdout).map((wt) =>
-    wt.path.includes("/.git/") ? { ...wt, path: resolveMainWorktreePath(wt.path) } : wt
+  const trees = parsePorcelain(stdout).map((worktree) =>
+    worktree.path.includes("/.git/") ? { ...worktree, path: resolveMainWorktreePath(worktree.path) } : worktree
   );
   log.info(`listWorktrees: ${trees.length} trees`);
   return trees;
@@ -65,6 +65,15 @@ export function parsePorcelain(output: string): Worktree[] {
   return worktrees;
 }
 
+function isKnownWorktree(path: string): boolean {
+  try {
+    const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"]);
+    return stdout.includes(`worktree ${path}`);
+  } catch {
+    return false;
+  }
+}
+
 export async function removeWorktree(
   path: string,
   force = false
@@ -77,8 +86,12 @@ export async function removeWorktree(
   } catch {
     // Worktree may be in a broken state (missing .git file).
     // Remove the directory manually and let git prune the metadata.
+    const resolved = resolve(path);
+    if (!isKnownWorktree(resolved)) {
+      throw new Error(`refusing to rm path not listed as a git worktree: ${path}`);
+    }
     log.warn(`removeWorktree: git remove failed for ${path}, falling back to rm + prune`);
-    await execa("rm", ["-rf", path]);
+    await execa("rm", ["-rf", resolved]);
     await execa("git", ["worktree", "prune"]);
     log.info(`removeWorktree: fallback cleanup completed for ${path}`);
   }

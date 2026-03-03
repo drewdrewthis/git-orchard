@@ -161,10 +161,10 @@ export function WorktreeList({
       <Text> </Text>
 
       <Box borderStyle="round" borderColor="gray" paddingX={2} paddingY={1} flexDirection="column">
-        {worktrees.map((wt, i) => (
+        {worktrees.map((worktree, i) => (
           <WorktreeRow
-            key={wt.path}
-            worktree={wt}
+            key={worktree.path}
+            worktree={worktree}
             isSelected={i === cursor}
             index={i}
             pathWidth={pathWidth}

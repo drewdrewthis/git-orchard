@@ -1,29 +1,28 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { log } from "../log.js";
+import { Logger } from "../log.js";
 
-describe("log", () => {
+describe("Logger", () => {
   let tmpDir: string;
   let logFile: string;
-  let restore: () => void;
+  let logger: Logger;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), "orchard-log-"));
     logFile = join(tmpDir, "debug.log");
-    restore = log._setPath(tmpDir, logFile);
+    logger = new Logger({ dir: tmpDir, file: logFile });
   });
 
   afterEach(() => {
-    restore();
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
   describe("info", () => {
     it("writes an INFO line with ISO timestamp", () => {
-      log.info("hello world");
+      logger.info("hello world");
 
       const content = readFileSync(logFile, "utf-8");
       expect(content).toMatch(
@@ -34,7 +33,7 @@ describe("log", () => {
 
   describe("warn", () => {
     it("writes a WARN line", () => {
-      log.warn("something fishy");
+      logger.warn("something fishy");
 
       const content = readFileSync(logFile, "utf-8");
       expect(content).toContain("[WARN] something fishy");
@@ -43,7 +42,7 @@ describe("log", () => {
 
   describe("error", () => {
     it("writes an ERROR line", () => {
-      log.error("it broke");
+      logger.error("it broke");
 
       const content = readFileSync(logFile, "utf-8");
       expect(content).toContain("[ERROR] it broke");
@@ -52,9 +51,9 @@ describe("log", () => {
 
   describe("multiple writes", () => {
     it("appends lines to the same file", () => {
-      log.info("first");
-      log.warn("second");
-      log.error("third");
+      logger.info("first");
+      logger.warn("second");
+      logger.error("third");
 
       const lines = readFileSync(logFile, "utf-8").trim().split("\n");
       expect(lines).toHaveLength(3);
@@ -68,27 +67,26 @@ describe("log", () => {
     it("creates the log directory if it does not exist", () => {
       const nestedDir = join(tmpDir, "nested", "deep");
       const nestedFile = join(nestedDir, "debug.log");
-      const restoreNested = log._setPath(nestedDir, nestedFile);
+      const nestedLogger = new Logger({ dir: nestedDir, file: nestedFile });
 
-      log.info("nested test");
+      nestedLogger.info("nested test");
 
       expect(existsSync(nestedDir)).toBe(true);
       expect(readFileSync(nestedFile, "utf-8")).toContain("nested test");
-      restoreNested();
     });
   });
 
   describe("time / timeEnd", () => {
     it("writes elapsed time for a label", () => {
-      log.time("test-op");
-      log.timeEnd("test-op");
+      logger.time("test-op");
+      logger.timeEnd("test-op");
 
       const content = readFileSync(logFile, "utf-8");
       expect(content).toMatch(/\[INFO\] test-op: \d+\.\d+ms/);
     });
 
     it("ignores timeEnd without a matching time call", () => {
-      log.timeEnd("no-start");
+      logger.timeEnd("no-start");
 
       expect(existsSync(logFile)).toBe(false);
     });
@@ -96,16 +94,13 @@ describe("log", () => {
 
   describe("rotation", () => {
     it("rotates the log file when it exceeds 10MB", () => {
-      // Create a file just over 10MB
       mkdirSync(tmpDir, { recursive: true });
       const bigContent = "x".repeat(10 * 1024 * 1024 + 1);
       writeFileSync(logFile, bigContent);
 
-      // Reset path to trigger rotation check on next write
-      restore();
-      restore = log._setPath(tmpDir, logFile);
-
-      log.info("after rotation");
+      // New logger instance triggers rotation check on first write
+      const freshLogger = new Logger({ dir: tmpDir, file: logFile });
+      freshLogger.info("after rotation");
 
       const backupFile = logFile + ".1";
       expect(existsSync(backupFile)).toBe(true);
@@ -113,6 +108,16 @@ describe("log", () => {
       const newContent = readFileSync(logFile, "utf-8");
       expect(newContent).toContain("after rotation");
       expect(newContent.length).toBeLessThan(1000);
+    });
+  });
+
+  describe("file permissions", () => {
+    it("creates log file with owner-only permissions", () => {
+      logger.info("permission test");
+
+      const stats = statSync(logFile);
+      const mode = stats.mode & 0o777;
+      expect(mode).toBe(0o600);
     });
   });
 });

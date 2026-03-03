@@ -5,6 +5,7 @@ import type { Worktree } from "../lib/types.js";
 import { removeWorktree } from "../lib/git.js";
 import { killTmuxSession } from "../lib/tmux.js";
 import { tildify } from "../lib/paths.js";
+import { log } from "../lib/log.js";
 
 interface Props {
   worktree: Worktree;
@@ -32,11 +33,16 @@ export function ConfirmDelete({ worktree, onDone, onCancel }: Props) {
         }
         try {
           await removeWorktree(worktree.path);
-        } catch {
+        } catch (firstError) {
+          log.warn(`removeWorktree failed, retrying with --force: ${firstError instanceof Error ? firstError.message : "unknown"}`);
           await removeWorktree(worktree.path, true);
         }
         onDone();
-      })().catch((err) => setError(err instanceof Error ? err.message : "Failed to delete"));
+      })().catch((err) => {
+        const message = err instanceof Error ? err.message : "Failed to delete";
+        log.error(`ConfirmDelete: ${message}`);
+        setError(message);
+      });
     } else if (input === "n" || input === "N" || key.escape) {
       onCancel();
     }

@@ -36,6 +36,22 @@ export type PrStatus =
   | "merged"
   | "closed";
 
+export interface StatusDisplay {
+  icon: string;
+  label: string;
+}
+
+export const prStatusDisplay: Record<PrStatus, StatusDisplay> = {
+  failing:           { icon: "\u2717", label: "failing" },
+  unresolved:        { icon: "\u25cf", label: "threads" },
+  changes_requested: { icon: "\u270e", label: "changes" },
+  review_needed:     { icon: "\u25cc", label: "review" },
+  pending_ci:        { icon: "\u25cc", label: "pending" },
+  approved:          { icon: "\u2713", label: "ready" },
+  merged:            { icon: "\u2713", label: "merged" },
+  closed:            { icon: "\u2717", label: "closed" },
+};
+
 export function resolvePrStatus(pr: PrInfo): PrStatus {
   if (pr.state === "merged") return "merged";
   if (pr.state === "closed") return "closed";

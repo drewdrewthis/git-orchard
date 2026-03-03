@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { resolvePrStatus } from "../types.js";
-import type { PrInfo } from "../types.js";
+import { resolvePrStatus, prStatusDisplay } from "../types.js";
+import type { PrInfo, PrStatus } from "../types.js";
 
 const basePr: PrInfo = {
   number: 1,
@@ -69,5 +69,25 @@ describe("resolvePrStatus", () => {
     expect(
       resolvePrStatus({ ...basePr, checksStatus: "none" })
     ).toBe("approved");
+  });
+});
+
+describe("prStatusDisplay", () => {
+  const allStatuses: PrStatus[] = [
+    "failing", "unresolved", "changes_requested", "review_needed",
+    "pending_ci", "approved", "merged", "closed",
+  ];
+
+  it("has an entry for every PrStatus", () => {
+    for (const status of allStatuses) {
+      expect(prStatusDisplay[status]).toBeDefined();
+      expect(prStatusDisplay[status].icon).toBeTruthy();
+      expect(prStatusDisplay[status].label).toBeTruthy();
+    }
+  });
+
+  it("uses distinct labels for each status", () => {
+    const labels = allStatuses.map((s) => prStatusDisplay[s].label);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });

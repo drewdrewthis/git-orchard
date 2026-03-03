@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { Worktree } from "../lib/types.js";
@@ -19,16 +19,16 @@ interface Props {
 }
 
 export function Cleanup({ worktrees, onDone }: Props) {
-  // Snapshot the stale list the first time we see any results.
+  // Snapshot the stale list once PR data arrives.
   // Once frozen, background refreshes can't reset user selections.
-  const frozenRef = useRef<Worktree[] | null>(null);
   const liveStale = filterStale(worktrees);
+  const [frozen, setFrozen] = useState<Worktree[] | null>(null);
 
-  if (frozenRef.current === null && liveStale.length > 0) {
-    frozenRef.current = liveStale;
+  if (frozen === null && liveStale.length > 0) {
+    setFrozen(liveStale);
   }
 
-  const stale = frozenRef.current ?? liveStale;
+  const stale = frozen ?? liveStale;
   const [selected, setSelected] = useState<Set<string>>(() =>
     new Set(filterStale(worktrees).map((w) => w.path))
   );
@@ -70,9 +70,9 @@ export function Cleanup({ worktrees, onDone }: Props) {
       Promise.all(
         [...selected].map(async (path) => {
           try {
-            const wt = stale.find((w) => w.path === path);
-            if (wt?.tmuxSession) {
-              try { await killTmuxSession(wt.tmuxSession); } catch { /* ok */ }
+            const worktree = stale.find((w) => w.path === path);
+            if (worktree?.tmuxSession) {
+              try { await killTmuxSession(worktree.tmuxSession); } catch { /* ok */ }
             }
             await removeWorktree(path, true);
             setDeleted((prev) => [...prev, path]);

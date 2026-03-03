@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import { log } from "./log.js";
-import { resolvePrStatus } from "./types.js";
-import type { PrInfo, PrStatus } from "./types.js";
+import { resolvePrStatus, prStatusDisplay } from "./types.js";
+import type { PrInfo } from "./types.js";
 
 export interface TmuxSession {
   name: string;
@@ -135,13 +135,15 @@ async function applySessionStyle(
   const statusLeft = formatStatusLeft(branch, pr);
   const t = ["-t", sessionName];
 
-  await runner("tmux", ["set-option", ...t, "status", "on"]);
-  await runner("tmux", ["set-option", ...t, "status-style", "bg=colour235,fg=colour248"]);
-  await runner("tmux", ["set-option", ...t, "status-left-length", "60"]);
-  await runner("tmux", ["set-option", ...t, "status-right-length", "120"]);
-  await runner("tmux", ["set-option", ...t, "status-left", statusLeft]);
-  await runner("tmux", ["set-option", ...t, "status-right", CHEATSHEET]);
-  await runner("tmux", ["bind-key", "o", "switch-client", "-t", "orchard"]);
+  await Promise.all([
+    runner("tmux", ["set-option", ...t, "status", "on"]),
+    runner("tmux", ["set-option", ...t, "status-style", "bg=colour235,fg=colour248"]),
+    runner("tmux", ["set-option", ...t, "status-left-length", "60"]),
+    runner("tmux", ["set-option", ...t, "status-right-length", "120"]),
+    runner("tmux", ["set-option", ...t, "status-left", statusLeft]),
+    runner("tmux", ["set-option", ...t, "status-right", CHEATSHEET]),
+    runner("tmux", ["bind-key", "o", "switch-client", "-t", "orchard"]),
+  ]);
 }
 
 const execaRunner: CommandRunner = async (cmd, args) => {
@@ -157,21 +159,10 @@ export function formatStatusLeft(
 
   if (pr) {
     const status = resolvePrStatus(pr);
-    const { icon, label } = tmuxStatusLabels[status];
+    const { icon, label } = prStatusDisplay[status];
     parts.push(`PR#${pr.number} ${icon} ${label}`);
   }
 
   return parts.join(" ");
 }
-
-const tmuxStatusLabels: Record<PrStatus, { icon: string; label: string }> = {
-  failing:           { icon: "\u2717", label: "failing" },
-  unresolved:        { icon: "\u25cf", label: "unresolved" },
-  changes_requested: { icon: "\u25cf", label: "changes" },
-  review_needed:     { icon: "\u25cb", label: "review" },
-  pending_ci:        { icon: "\u25cb", label: "pending" },
-  approved:          { icon: "\u2713", label: "ready" },
-  merged:            { icon: "\u2713", label: "merged" },
-  closed:            { icon: "\u2717", label: "closed" },
-};
 
