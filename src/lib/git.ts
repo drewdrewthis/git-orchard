@@ -68,5 +68,12 @@ export async function removeWorktree(
 ): Promise<void> {
   const args = ["worktree", "remove", path];
   if (force) args.push("--force");
-  await execa("git", args);
+  try {
+    await execa("git", args);
+  } catch {
+    // Worktree may be in a broken state (missing .git file).
+    // Remove the directory manually and let git prune the metadata.
+    await execa("rm", ["-rf", path]);
+    await execa("git", ["worktree", "prune"]);
+  }
 }

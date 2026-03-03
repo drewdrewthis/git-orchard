@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { Worktree } from "../lib/types.js";
@@ -6,32 +6,44 @@ import { removeWorktree } from "../lib/git.js";
 import { killTmuxSession } from "../lib/tmux.js";
 import { tildify } from "../lib/paths.js";
 
+function filterStale(worktrees: Worktree[]): Worktree[] {
+  return worktrees.filter(
+    (w) => w.pr?.state === "merged" || w.pr?.state === "closed"
+  );
+}
+
 interface Props {
   worktrees: Worktree[];
   onDone: () => void;
 }
 
 export function Cleanup({ worktrees, onDone }: Props) {
-  const stale = worktrees.filter(
-    (w) => w.pr?.state === "merged" || w.pr?.state === "closed"
+  // Snapshot the stale list the first time we see any results.
+  // Once frozen, background refreshes can't reset user selections.
+  const frozenRef = useRef<Worktree[] | null>(null);
+  const liveStale = filterStale(worktrees);
+
+  if (frozenRef.current === null && liveStale.length > 0) {
+    frozenRef.current = liveStale;
+  }
+
+  const stale = frozenRef.current ?? liveStale;
+  const [selected, setSelected] = useState<Set<string>>(() =>
+    new Set(filterStale(worktrees).map((w) => w.path))
   );
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(stale.map((w) => w.path))
-  );
-  const prevStaleCount = useRef(stale.length);
-  useEffect(() => {
-    if (stale.length !== prevStaleCount.current) {
-      prevStaleCount.current = stale.length;
-      setSelected(new Set(stale.map((w) => w.path)));
-    }
-  }, [stale.length]);
   const [cursor, setCursor] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [done, setDone] = useState(false);
   const [deleted, setDeleted] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
 
   useInput((input, key) => {
     if (deleting) return;
+
+    if (done) {
+      if (input === "q" || key.escape) onDone();
+      return;
+    }
 
     if (key.upArrow) {
       setCursor((c) => Math.max(0, c - 1));
@@ -63,14 +75,16 @@ export function Cleanup({ worktrees, onDone }: Props) {
             await removeWorktree(path, true);
             setDeleted((prev) => [...prev, path]);
           } catch (err) {
-            setError(
-              `Failed to remove ${path}: ${err instanceof Error ? err.message : "unknown error"}`
-            );
+            setErrors((prev) => [
+              ...prev,
+              `${tildify(path)}: ${err instanceof Error ? err.message : "unknown error"}`,
+            ]);
           }
         })
-      )
-        .then(() => setDeleting(false))
-        .catch((err) => setError(err instanceof Error ? err.message : "unknown error"));
+      ).then(() => {
+        setDeleting(false);
+        setDone(true);
+      });
     } else if (input === "q" || key.escape) {
       onDone();
     }
@@ -112,18 +126,27 @@ export function Cleanup({ worktrees, onDone }: Props) {
     );
   }
 
-  if (deleted.length > 0) {
+  if (done) {
     return (
       <Box flexDirection="column">
-        <Text color="green" bold>
-          Cleaned up {deleted.length} worktree(s):
-        </Text>
+        {deleted.length > 0 && (
+          <Text color="green" bold>
+            Cleaned up {deleted.length} worktree(s):
+          </Text>
+        )}
         {deleted.map((p) => (
           <Text key={p} color="green">
             ✓ {tildify(p)}
           </Text>
         ))}
-        {error && <Text color="red">{error}</Text>}
+        {errors.map((e, i) => (
+          <Text key={i} color="red">
+            ✗ {e}
+          </Text>
+        ))}
+        {deleted.length === 0 && errors.length > 0 && (
+          <Text color="red" bold>All removals failed.</Text>
+        )}
         <Text dimColor>Press q to go back</Text>
       </Box>
     );
