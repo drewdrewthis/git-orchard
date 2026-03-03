@@ -124,7 +124,7 @@ async function sessionExists(
   }
 }
 
-const CHEATSHEET = "#[fg=colour8]o: orchard | (/):#[fg=colour8] prev/next | %: split-v | \": split-h | arrows: pane | z: zoom | x: close | d: detach";
+const CHEATSHEET = "#[fg=colour8]prefix: ctrl-b | o: orchard | (/): prev/next | %%: split-v | \": split-h | arrows: pane | z: zoom | x: close | d: detach";
 
 async function applySessionStyle(
   sessionName: string,
@@ -139,7 +139,7 @@ async function applySessionStyle(
     runner("tmux", ["set-option", ...t, "status", "on"]),
     runner("tmux", ["set-option", ...t, "status-style", "bg=colour235,fg=colour248"]),
     runner("tmux", ["set-option", ...t, "status-left-length", "60"]),
-    runner("tmux", ["set-option", ...t, "status-right-length", "120"]),
+    runner("tmux", ["set-option", ...t, "status-right-length", "150"]),
     runner("tmux", ["set-option", ...t, "status-left", statusLeft]),
     runner("tmux", ["set-option", ...t, "status-right", CHEATSHEET]),
     runner("tmux", ["bind-key", "o", "switch-client", "-t", "orchard"]),
