@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import { log } from "./log.js";
 import { resolvePrStatus } from "./types.js";
 import type { PrInfo, PrStatus } from "./types.js";
 
@@ -16,7 +17,7 @@ export async function listTmuxSessions(): Promise<TmuxSession[]> {
       "#{session_name}\t#{session_path}\t#{session_attached}",
     ]);
 
-    return stdout
+    const sessions = stdout
       .trim()
       .split("\n")
       .filter(Boolean)
@@ -24,6 +25,8 @@ export async function listTmuxSessions(): Promise<TmuxSession[]> {
         const [name, path, attached] = line.split("\t");
         return { name: name!, path: path!, attached: attached === "1" };
       });
+    log.info(`listTmuxSessions: ${sessions.length} sessions`);
+    return sessions;
   } catch {
     // tmux not running or not installed
     return [];
@@ -52,6 +55,7 @@ export function findSessionForWorktree(
 
 export async function killTmuxSession(sessionName: string): Promise<void> {
   await execa("tmux", ["kill-session", "-t", sessionName]);
+  log.info(`killTmuxSession: ${sessionName}`);
 }
 
 export async function capturePaneContent(sessionName: string, lines: number): Promise<string | null> {
@@ -100,6 +104,7 @@ export async function switchToSession(
 
   await applySessionStyle(sessionName, branch, pr, runner);
   await runner("tmux", ["switch-client", "-t", sessionName]);
+  log.info(`switchToSession: ${sessionName} (${exists ? "existing" : "new"})`);
 }
 
 export type CommandRunner = (

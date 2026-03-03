@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import { log } from "./log.js";
 import type { PrInfo, ReviewDecision, ChecksStatus } from "./types.js";
 
 interface RawPr {
@@ -16,6 +17,7 @@ interface RawPr {
  */
 export async function getAllPrs(): Promise<Map<string, PrInfo>> {
   try {
+    log.time("getAllPrs");
     const { stdout } = await execa("gh", [
       "pr",
       "list",
@@ -45,8 +47,12 @@ export async function getAllPrs(): Promise<Map<string, PrInfo>> {
       });
     }
 
+    log.timeEnd("getAllPrs");
+    log.info(`getAllPrs: ${prMap.size} PRs`);
     return prMap;
-  } catch {
+  } catch (err) {
+    log.timeEnd("getAllPrs");
+    log.warn(`getAllPrs failed: ${err instanceof Error ? err.message : "unknown"}`);
     return new Map();
   }
 }
@@ -63,6 +69,7 @@ export async function enrichPrDetails(
   if (openPrs.length === 0) return;
 
   try {
+    log.time("enrichPrDetails");
     const { owner, name } = await getRepo();
 
     const prFragments = openPrs
@@ -125,8 +132,10 @@ export async function enrichPrDetails(
       pr.checksStatus = deriveChecksStatus(contexts);
       prMap.set(branch, pr);
     }
-  } catch {
-    // Fail silently — checks and threads default to their initial values
+    log.timeEnd("enrichPrDetails");
+  } catch (err) {
+    log.timeEnd("enrichPrDetails");
+    log.warn(`enrichPrDetails failed: ${err instanceof Error ? err.message : "unknown"}`);
   }
 }
 

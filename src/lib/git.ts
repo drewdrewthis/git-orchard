@@ -1,5 +1,6 @@
 import { execaSync, execa } from "execa";
 import { resolve } from "node:path";
+import { log } from "./log.js";
 import type { Worktree } from "./types.js";
 
 function findRepoRoot(): string {
@@ -21,9 +22,11 @@ function resolveMainWorktreePath(gitDir: string): string {
 export function listWorktrees(): Worktree[] {
   const cwd = findRepoRoot();
   const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"], { cwd });
-  return parsePorcelain(stdout).map((wt) =>
+  const trees = parsePorcelain(stdout).map((wt) =>
     wt.path.includes("/.git/") ? { ...wt, path: resolveMainWorktreePath(wt.path) } : wt
   );
+  log.info(`listWorktrees: ${trees.length} trees`);
+  return trees;
 }
 
 export function parsePorcelain(output: string): Worktree[] {
@@ -70,10 +73,13 @@ export async function removeWorktree(
   if (force) args.push("--force");
   try {
     await execa("git", args);
+    log.info(`removeWorktree: removed ${path}`);
   } catch {
     // Worktree may be in a broken state (missing .git file).
     // Remove the directory manually and let git prune the metadata.
+    log.warn(`removeWorktree: git remove failed for ${path}, falling back to rm + prune`);
     await execa("rm", ["-rf", path]);
     await execa("git", ["worktree", "prune"]);
+    log.info(`removeWorktree: fallback cleanup completed for ${path}`);
   }
 }

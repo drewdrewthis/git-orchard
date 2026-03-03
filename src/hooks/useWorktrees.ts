@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { listWorktrees } from "../lib/git.js";
 import { getAllPrs, enrichPrDetails, isGhAvailable } from "../lib/github.js";
 import { listTmuxSessions, findSessionForWorktree } from "../lib/tmux.js";
+import { log } from "../lib/log.js";
 import type { Worktree } from "../lib/types.js";
 
 const AUTO_REFRESH_MS = 60_000;
@@ -15,15 +16,20 @@ export function useWorktrees() {
   const refresh = useCallback(async () => {
     try {
       // Phase 1: git data (synchronous, fast)
+      log.time("phase:git");
       const trees = listWorktrees();
+      log.timeEnd("phase:git");
+      log.info(`worktrees: ${trees.length} found`);
       setWorktrees(trees.map((t) => ({ ...t, prLoading: !t.isBare && !!t.branch })));
       setLoading(false);
 
       // Phase 2: tmux + gh check (parallel)
+      log.time("phase:tmux+gh");
       const [sessions, ghOk] = await Promise.all([
         listTmuxSessions(),
         isGhAvailable(),
       ]);
+      log.timeEnd("phase:tmux+gh");
 
       const withTmux = trees.map((t) => {
         const session = findSessionForWorktree(sessions, t.path, t.branch);
@@ -43,7 +49,10 @@ export function useWorktrees() {
       setWorktrees(withTmux);
 
       // Phase 3: batch fetch PR basics (fast -- no statusCheckRollup)
+      log.time("phase:pr-basics");
       const prMap = await getAllPrs();
+      log.timeEnd("phase:pr-basics");
+      log.info(`PRs: ${prMap.size} found`);
       const applyPrs = (base: Worktree[]) =>
         base.map((t) => {
           if (!t.branch || t.isBare) return { ...t, prLoading: false };
@@ -53,12 +62,14 @@ export function useWorktrees() {
       setWorktrees(applyPrs(withTmux));
 
       // Phase 4: enrich open PRs with checks + threads (slow, non-blocking)
+      log.time("phase:pr-enrich");
       await enrichPrDetails(prMap);
+      log.timeEnd("phase:pr-enrich");
       setWorktrees(applyPrs(withTmux));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to list worktrees"
-      );
+      const message = err instanceof Error ? err.message : "Failed to list worktrees";
+      log.error(`refresh failed: ${message}`);
+      setError(message);
       setLoading(false);
     }
   }, []);

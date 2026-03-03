@@ -4,6 +4,7 @@ import meow from "meow";
 import App from "./app.js";
 import { handleInit } from "./commands/init.js";
 import { handleUpgrade } from "./commands/upgrade.js";
+import { log } from "./lib/log.js";
 
 const cli = meow(
   `
@@ -28,6 +29,7 @@ const cli = meow(
 );
 
 const command = cli.input[0];
+log.info(`startup: git-orchard${command ? ` command=${command}` : ""}`);
 
 if (command === "init") {
   handleInit();

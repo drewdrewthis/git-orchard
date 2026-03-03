@@ -5,6 +5,7 @@ import type { Worktree } from "../lib/types.js";
 import { removeWorktree } from "../lib/git.js";
 import { killTmuxSession } from "../lib/tmux.js";
 import { tildify } from "../lib/paths.js";
+import { log } from "../lib/log.js";
 
 function filterStale(worktrees: Worktree[]): Worktree[] {
   return worktrees.filter(
@@ -65,6 +66,7 @@ export function Cleanup({ worktrees, onDone }: Props) {
         return;
       }
       setDeleting(true);
+      log.info(`cleanup: deleting ${selected.size} worktree(s)`);
       Promise.all(
         [...selected].map(async (path) => {
           try {
@@ -75,13 +77,16 @@ export function Cleanup({ worktrees, onDone }: Props) {
             await removeWorktree(path, true);
             setDeleted((prev) => [...prev, path]);
           } catch (err) {
+            const message = err instanceof Error ? err.message : "unknown error";
+            log.error(`cleanup: failed to remove ${path}: ${message}`);
             setErrors((prev) => [
               ...prev,
-              `${tildify(path)}: ${err instanceof Error ? err.message : "unknown error"}`,
+              `${tildify(path)}: ${message}`,
             ]);
           }
         })
       ).then(() => {
+        log.info("cleanup: done");
         setDeleting(false);
         setDone(true);
       });
