@@ -14,6 +14,9 @@ const cli = meow(
     $ git-orchard upgrade      Upgrade to the latest version
     $ git-orchard cleanup      Find worktrees with merged PRs to remove
 
+  Options
+    --json    Output worktree data as JSON and exit
+
   Navigation
     1-9     Jump to worktree by number
     ↑/↓     Select worktree
@@ -25,6 +28,12 @@ const cli = meow(
 `,
   {
     importMeta: import.meta,
+    flags: {
+      json: {
+        type: "boolean",
+        default: false,
+      },
+    },
   }
 );
 
@@ -35,6 +44,10 @@ if (command === "init") {
   handleInit();
 } else if (command === "upgrade") {
   await handleUpgrade();
+} else if (cli.flags.json) {
+  const { collectWorktreeData } = await import("./lib/collect.js");
+  const data = await collectWorktreeData();
+  console.log(JSON.stringify(data, null, 2));
 } else {
   const app = render(<App command={command} />);
   await app.waitUntilExit();

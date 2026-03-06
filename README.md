@@ -56,6 +56,7 @@ This creates an `orchard` command that creates and attaches to the persistent or
 orchard          # Open the orchard session (creates it if needed)
 orchard cleanup  # Jump straight to cleanup view
 orchard init     # Print shell function
+orchard --json   # Output worktree data as JSON and exit
 ```
 
 ### Keybindings in orchard
