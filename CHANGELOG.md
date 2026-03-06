@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.6](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.5...git-orchard-v0.1.6) (2026-03-06)
+
+
+### Features
+
+* add --json flag for machine-readable worktree output ([186eb95](https://github.com/drewdrewthis/git-orchard/commit/186eb954f52b983ab34e6174b98107330c8b2c29))
+
+
+### Bug Fixes
+
+* show row numbers for all worktree items, not just 1-9 ([8be540e](https://github.com/drewdrewthis/git-orchard/commit/8be540ecadb0b3d1664d2403309d7ca2e9be5ba8))
+
 ## [0.1.5](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.4...git-orchard-v0.1.5) (2026-03-06)
 
 
