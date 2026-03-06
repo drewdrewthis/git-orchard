@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.4...git-orchard-v0.1.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* derive review status from latestReviews when branch protection is absent ([b5c72ea](https://github.com/drewdrewthis/git-orchard/commit/b5c72ea75a7ab655bd882b3665aa628833f90ea5))
+* prioritize unresolved comments over failing CI in TUI status ([14ab5dc](https://github.com/drewdrewthis/git-orchard/commit/14ab5dc72f0e5dcaba4d8224dfb7ba27c07c0b61))
+
 ## [0.1.4](https://github.com/drewdrewthis/git-orchard/compare/git-orchard-v0.1.3...git-orchard-v0.1.4) (2026-03-03)
 
 
