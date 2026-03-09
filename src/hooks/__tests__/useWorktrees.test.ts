@@ -9,6 +9,7 @@ function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
     branch: "main",
     head: "abc1234",
     isBare: false,
+    hasConflicts: false,
     pr: null,
     prLoading: false,
     tmuxSession: null,
