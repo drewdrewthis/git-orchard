@@ -1,5 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { parsePorcelain } from "../git.js";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { execaSync } from "execa";
+import { parsePorcelain, worktreeHasConflicts } from "../git.js";
+
+vi.mock("execa", () => ({
+  execaSync: vi.fn(),
+  execa: vi.fn(),
+}));
+
+const mockExecaSync = vi.mocked(execaSync);
 
 describe("parsePorcelain", () => {
   it("parses a single worktree with branch", () => {
@@ -95,7 +103,7 @@ branch refs/heads/main
     expect(result[1]!.branch).toBe("main");
   });
 
-  it("initializes pr and tmux fields as null/false", () => {
+  it("initializes pr, tmux, and conflict fields as null/false", () => {
     const output = `worktree /home/user/project
 HEAD abc123
 branch refs/heads/main
@@ -105,5 +113,27 @@ branch refs/heads/main
     expect(result[0]!.prLoading).toBe(false);
     expect(result[0]!.tmuxSession).toBeNull();
     expect(result[0]!.tmuxAttached).toBe(false);
+    expect(result[0]!.hasConflicts).toBe(false);
+  });
+});
+
+describe("worktreeHasConflicts", () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("returns true when git diff reports unmerged files", () => {
+    mockExecaSync.mockReturnValueOnce({ stdout: "src/foo.ts\n" } as ReturnType<typeof execaSync>);
+    expect(worktreeHasConflicts("/some/path")).toBe(true);
+  });
+
+  it("returns false when no unmerged files exist", () => {
+    mockExecaSync.mockReturnValueOnce({ stdout: "" } as ReturnType<typeof execaSync>);
+    expect(worktreeHasConflicts("/some/path")).toBe(false);
+  });
+
+  it("returns false when git command fails", () => {
+    mockExecaSync.mockImplementationOnce(() => { throw new Error("not a git repo"); });
+    expect(worktreeHasConflicts("/not/a/repo")).toBe(false);
   });
 });

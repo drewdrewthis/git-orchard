@@ -19,12 +19,27 @@ function resolveMainWorktreePath(gitDir: string): string {
   }
 }
 
+export function worktreeHasConflicts(worktreePath: string): boolean {
+  try {
+    const { stdout } = execaSync("git", ["diff", "--name-only", "--diff-filter=U"], { cwd: worktreePath });
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function listWorktrees(): Worktree[] {
   const cwd = findRepoRoot();
   const { stdout } = execaSync("git", ["worktree", "list", "--porcelain"], { cwd });
-  const trees = parsePorcelain(stdout).map((worktree) =>
-    worktree.path.includes("/.git/") ? { ...worktree, path: resolveMainWorktreePath(worktree.path) } : worktree
-  );
+  const trees = parsePorcelain(stdout).map((worktree) => {
+    const resolved = worktree.path.includes("/.git/")
+      ? { ...worktree, path: resolveMainWorktreePath(worktree.path) }
+      : worktree;
+    if (!resolved.isBare) {
+      return { ...resolved, hasConflicts: worktreeHasConflicts(resolved.path) };
+    }
+    return resolved;
+  });
   log.info(`listWorktrees: ${trees.length} trees`);
   return trees;
 }
@@ -58,7 +73,7 @@ export function parsePorcelain(output: string): Worktree[] {
     }
 
     if (path) {
-      worktrees.push({ path, head, branch, isBare, pr: null, prLoading: false, tmuxSession: null, tmuxAttached: false });
+      worktrees.push({ path, head, branch, isBare, hasConflicts: false, pr: null, prLoading: false, tmuxSession: null, tmuxAttached: false });
     }
   }
 

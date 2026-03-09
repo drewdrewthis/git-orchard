@@ -74,7 +74,7 @@ describe("resolvePrStatus", () => {
 
 describe("prStatusDisplay", () => {
   const allStatuses: PrStatus[] = [
-    "failing", "unresolved", "changes_requested", "review_needed",
+    "conflict", "failing", "unresolved", "changes_requested", "review_needed",
     "pending_ci", "approved", "merged", "closed",
   ];
 

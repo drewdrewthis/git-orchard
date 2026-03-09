@@ -77,8 +77,13 @@ export async function removeRemoteRegistryEntry(host: string, sessionName: strin
   }
 }
 
+export async function createRemoteSession(host: string, sessionName: string, worktreePath: string): Promise<void> {
+  await sshExec(host, `tmux new-session -d -s ${sessionName} -c ${worktreePath}`);
+  log.info(`createRemoteSession: created ${sessionName} at ${worktreePath} on ${host}`);
+}
+
 export async function attachRemoteSession(host: string, sessionName: string, shell: "mosh" | "ssh" = "ssh"): Promise<void> {
-  const localSession = `remote:${sessionName}`;
+  const localSession = `remote_${sessionName}`;
   const remoteCmd = shell === "mosh"
     ? `mosh ${host} -- tmux attach-session -t ${sessionName}`
     : `ssh -t ${host} tmux attach-session -t ${sessionName}`;

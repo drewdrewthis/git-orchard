@@ -3,6 +3,7 @@ export interface Worktree {
   branch: string | null;
   head: string;
   isBare: boolean;
+  hasConflicts: boolean;
   pr: PrInfo | null;
   prLoading: boolean;
   tmuxSession: string | null;
@@ -28,6 +29,7 @@ export interface PrInfo {
  * Single unified status for display, ordered by priority (highest first).
  */
 export type PrStatus =
+  | "conflict"
   | "unresolved"
   | "changes_requested"
   | "failing"
@@ -43,6 +45,7 @@ export interface StatusDisplay {
 }
 
 export const prStatusDisplay: Record<PrStatus, StatusDisplay> = {
+  conflict:          { icon: "\u26a0", label: "conflict" },
   failing:           { icon: "\u2717", label: "failing" },
   unresolved:        { icon: "\u25cf", label: "threads" },
   changes_requested: { icon: "\u270e", label: "changes" },

@@ -48,7 +48,7 @@ export function WorktreeRow({
         {worktree.isBare ? (
           <Text dimColor>(bare)</Text>
         ) : (
-          <StatusBadge pr={worktree.pr} loading={worktree.prLoading} />
+          <StatusBadge pr={worktree.pr} loading={worktree.prLoading} hasConflicts={worktree.hasConflicts} />
         )}
       </Box>
       <Text>  </Text>

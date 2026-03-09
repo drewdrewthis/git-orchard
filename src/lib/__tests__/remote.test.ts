@@ -96,6 +96,32 @@ describe("listRemoteTmuxSessions", () => {
   });
 });
 
+describe("createRemoteSession", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function createRemoteSession(...args: Parameters<typeof import("../remote.js")["createRemoteSession"]>) {
+    const mod = await import("../remote.js");
+    return mod.createRemoteSession(...args);
+  }
+
+  it("creates a tmux session on the remote host in the worktree directory", async () => {
+    mockExeca.mockResolvedValueOnce({ stdout: "" } as Awaited<ReturnType<typeof execa>>);
+
+    await createRemoteSession("ubuntu@10.0.3.56", "feat-login", "/home/ubuntu/worktrees/wt-feat");
+    expect(mockExeca).toHaveBeenCalledWith("ssh", [
+      "-o", "ConnectTimeout=5",
+      "-o", "BatchMode=yes",
+      "-o", "ControlMaster=auto",
+      "-o", "ControlPath=/tmp/orchard-ssh-%r@%h:%p",
+      "-o", "ControlPersist=600",
+      "ubuntu@10.0.3.56",
+      "tmux new-session -d -s feat-login -c /home/ubuntu/worktrees/wt-feat",
+    ]);
+  });
+});
+
 describe("attachRemoteSession", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -114,12 +140,12 @@ describe("attachRemoteSession", () => {
       .mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>);
 
     await attachRemoteSession("ubuntu@10.0.3.56", "issue1966");
-    expect(mockExeca).toHaveBeenCalledWith("tmux", ["has-session", "-t", "remote:issue1966"]);
+    expect(mockExeca).toHaveBeenCalledWith("tmux", ["has-session", "-t", "remote_issue1966"]);
     expect(mockExeca).toHaveBeenCalledWith("tmux", [
-      "new-session", "-d", "-s", "remote:issue1966",
+      "new-session", "-d", "-s", "remote_issue1966",
       "ssh -t ubuntu@10.0.3.56 tmux attach-session -t issue1966",
     ]);
-    expect(mockExeca).toHaveBeenCalledWith("tmux", ["switch-client", "-t", "remote:issue1966"]);
+    expect(mockExeca).toHaveBeenCalledWith("tmux", ["switch-client", "-t", "remote_issue1966"]);
   });
 
   it("reuses existing local session for ssh", async () => {
@@ -129,8 +155,8 @@ describe("attachRemoteSession", () => {
       .mockResolvedValueOnce({} as Awaited<ReturnType<typeof execa>>);
 
     await attachRemoteSession("ubuntu@10.0.3.56", "issue1966");
-    expect(mockExeca).toHaveBeenCalledWith("tmux", ["has-session", "-t", "remote:issue1966"]);
-    expect(mockExeca).toHaveBeenCalledWith("tmux", ["switch-client", "-t", "remote:issue1966"]);
+    expect(mockExeca).toHaveBeenCalledWith("tmux", ["has-session", "-t", "remote_issue1966"]);
+    expect(mockExeca).toHaveBeenCalledWith("tmux", ["switch-client", "-t", "remote_issue1966"]);
   });
 
   it("creates a detached local session with mosh when shell is mosh", async () => {
@@ -141,7 +167,7 @@ describe("attachRemoteSession", () => {
 
     await attachRemoteSession("ubuntu@10.0.3.56", "issue1966", "mosh");
     expect(mockExeca).toHaveBeenCalledWith("tmux", [
-      "new-session", "-d", "-s", "remote:issue1966",
+      "new-session", "-d", "-s", "remote_issue1966",
       "mosh ubuntu@10.0.3.56 -- tmux attach-session -t issue1966",
     ]);
   });

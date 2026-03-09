@@ -5,9 +5,15 @@ import type { PrInfo, PrStatus } from "../lib/types.js";
 interface Props {
   pr: PrInfo | null;
   loading: boolean;
+  hasConflicts: boolean;
 }
 
-export function StatusBadge({ pr, loading }: Props) {
+export function StatusBadge({ pr, loading, hasConflicts }: Props) {
+  if (hasConflicts) {
+    const { icon, label } = prStatusDisplay["conflict"];
+    return <Text color={statusColor["conflict"]}>{icon} {label}</Text>;
+  }
+
   if (loading) {
     return <Text dimColor>···</Text>;
   }
@@ -22,6 +28,7 @@ export function StatusBadge({ pr, loading }: Props) {
 }
 
 const statusColor: Record<PrStatus, string> = {
+  conflict:          "red",
   failing:           "red",
   unresolved:        "yellow",
   changes_requested: "red",

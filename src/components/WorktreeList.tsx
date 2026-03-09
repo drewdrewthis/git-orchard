@@ -8,7 +8,7 @@ import { switchToSession, deriveSessionName, capturePaneContent } from "../lib/t
 import { openUrl } from "../lib/browser.js";
 import { cursorIndexFromDigit } from "../lib/navigation.js";
 import { loadConfig } from "../lib/config.js";
-import { attachRemoteSession } from "../lib/remote.js";
+import { attachRemoteSession, createRemoteSession } from "../lib/remote.js";
 import { log } from "../lib/log.js";
 import type { Worktree } from "../lib/types.js";
 
@@ -81,16 +81,22 @@ export function WorktreeList({
       setCursor((c) => Math.min(worktrees.length - 1, c + 1));
     } else if (key.return || input === "t") {
       if (selected && !selected.isBare) {
-        if (selected.remote && selected.tmuxSession) {
+        if (selected.remote) {
           const config = loadConfig();
           const remote = config.remotes.find((r) => r.name === selected.remote);
           if (remote) {
-            attachRemoteSession(remote.host, selected.tmuxSession, remote.shell).catch((err) => {
-              const msg = err instanceof Error ? err.message : String(err);
-              log.error(`attachRemoteSession failed for ${selected.tmuxSession}: ${msg}`);
-            });
+            const sessionName = selected.tmuxSession ?? deriveSessionName(selected.branch, selected.path);
+            const attach = selected.tmuxSession
+              ? Promise.resolve()
+              : createRemoteSession(remote.host, sessionName, selected.path);
+            attach
+              .then(() => attachRemoteSession(remote.host, sessionName, remote.shell))
+              .catch((err) => {
+                const msg = err instanceof Error ? err.message : String(err);
+                log.error(`remote session failed for ${sessionName}: ${msg}`);
+              });
           }
-        } else if (!selected.remote) {
+        } else {
           const sessionName = deriveSessionName(selected.branch, selected.path);
           switchToSession({
             sessionName,
