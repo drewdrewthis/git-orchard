@@ -77,6 +77,27 @@ export async function removeRemoteRegistryEntry(host: string, sessionName: strin
   }
 }
 
+import type { CancellableCapture } from "./tmux.js";
+
+export function captureRemotePaneContent(host: string, sessionName: string, lines: number): CancellableCapture {
+  const subprocess = execa("ssh", [
+    "-o", "ConnectTimeout=5",
+    "-o", "BatchMode=yes",
+    "-o", "ControlMaster=auto",
+    "-o", "ControlPath=/tmp/orchard-ssh-%r@%h:%p",
+    "-o", "ControlPersist=600",
+    host,
+    `tmux capture-pane -t ${sessionName} -p -J -e -S ${-lines}`,
+  ]);
+
+  const promise = subprocess.then(
+    (result) => result.stdout.trimEnd(),
+    () => null,
+  );
+
+  return { promise, kill: () => subprocess.kill() };
+}
+
 export async function createRemoteSession(host: string, sessionName: string, worktreePath: string): Promise<void> {
   try {
     await sshExec(host, `tmux new-session -d -s ${sessionName} -c ${worktreePath}`);

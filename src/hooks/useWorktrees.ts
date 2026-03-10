@@ -95,6 +95,82 @@ export function applyIssueStates(
   });
 }
 
+function withStaleRemotes(prev: Worktree[], newLocals: Worktree[]): Worktree[] {
+  return [...newLocals, ...prev.filter((t) => t.remote)];
+}
+
+/**
+ * Core refresh logic extracted for testability.
+ * Produces at most 3 setWorktrees calls, preserving stale remote worktrees
+ * in every intermediate state.
+ */
+export async function refreshWorktrees(
+  setWorktrees: (updater: Worktree[] | ((prev: Worktree[]) => Worktree[])) => void,
+  setLoading: (loading: boolean) => void,
+  setError: (error: string | null) => void,
+): Promise<void> {
+  try {
+    // --- setState #1: local worktrees appear immediately ---
+    const trees = fetchGitWorktrees();
+    setWorktrees((prev) => {
+      const locals = trees.map((tree) => ({ ...tree, prLoading: !tree.isBare && !!tree.branch }));
+      return withStaleRemotes(prev, locals);
+    });
+    setLoading(false);
+
+    // Fetch tmux sessions and gh availability (network)
+    const { sessions, ghOk } = await fetchTmuxAndGh();
+    const withTmux = mergeTmuxSessions(trees, sessions, ghOk);
+
+    if (!ghOk) {
+      // --- setState #2 (early return): tmux only, no PRs ---
+      setWorktrees((prev) => withStaleRemotes(prev, withTmux));
+      return;
+    }
+
+    // Batch: fetch PR basics before updating state
+    const worktreeBranches = withTmux
+      .filter((t) => !t.isBare && t.branch)
+      .map((t) => t.branch!);
+    const prMap = await fetchPrBasics(worktreeBranches);
+    const withPrs = applyPrs(withTmux, prMap);
+
+    // --- setState #2: tmux + PR basics merged together ---
+    setWorktrees((prev) => withStaleRemotes(prev, withPrs));
+
+    // Fetch remote worktrees in parallel with PR enrichment
+    const config = loadConfig();
+    const remotePromise = config.remote
+      ? fetchRemoteWorktrees(config.remote)
+      : Promise.resolve([]);
+    const [, remoteTrees] = await Promise.all([
+      enrichPrs(prMap),
+      remotePromise,
+    ]);
+
+    // Apply enriched PRs to local and remote, then combine
+    const localWithPrs = applyPrs(withTmux, prMap);
+    const remotesWithPrs = remoteTrees.map((tree: Worktree) => {
+      if (!tree.branch || tree.isBare) return tree;
+      return { ...tree, pr: prMap.get(tree.branch) ?? null };
+    });
+
+    const allTrees = [...localWithPrs, ...remotesWithPrs];
+
+    // Enrich worktrees without PRs with issue closed state
+    const issueStates = await fetchIssueStates(allTrees);
+    const withIssues = applyIssueStates(allTrees, issueStates);
+
+    // --- setState #3: final state with remote trees, enriched PRs, and issues ---
+    setWorktrees(withIssues);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to list worktrees";
+    log.error(`refresh failed: ${message}`);
+    setError(message);
+    setLoading(false);
+  }
+}
+
 export function useWorktrees() {
   const [worktrees, setWorktrees] = useState<Worktree[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,58 +178,7 @@ export function useWorktrees() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const trees = fetchGitWorktrees();
-      setWorktrees(trees.map((tree) => ({ ...tree, prLoading: !tree.isBare && !!tree.branch })));
-      setLoading(false);
-
-      const { sessions, ghOk } = await fetchTmuxAndGh();
-      const withTmux = mergeTmuxSessions(trees, sessions, ghOk);
-
-      if (!ghOk) {
-        setWorktrees(withTmux);
-        return;
-      }
-
-      setWorktrees(withTmux);
-
-      const worktreeBranches = withTmux
-        .filter((t) => !t.isBare && t.branch)
-        .map((t) => t.branch!);
-      const prMap = await fetchPrBasics(worktreeBranches);
-      const withPrs = applyPrs(withTmux, prMap);
-      setWorktrees(withPrs);
-
-      // Fetch remote worktrees in parallel with PR enrichment
-      const config = loadConfig();
-      const remotePromise = config.remote
-        ? fetchRemoteWorktrees(config.remote)
-        : Promise.resolve([]);
-      const [, remoteTrees] = await Promise.all([
-        enrichPrs(prMap),
-        remotePromise,
-      ]);
-
-      // Apply enriched PRs to local and remote, then combine
-      const localWithPrs = applyPrs(withTmux, prMap);
-      const remotesWithPrs = remoteTrees.map((tree) => {
-        if (!tree.branch || tree.isBare) return tree;
-        return { ...tree, pr: prMap.get(tree.branch) ?? null };
-      });
-
-      const allTrees = [...localWithPrs, ...remotesWithPrs];
-
-      // Enrich worktrees without PRs with issue closed state
-      const issueStates = await fetchIssueStates(allTrees);
-      const withIssues = applyIssueStates(allTrees, issueStates);
-
-      setWorktrees(withIssues);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list worktrees";
-      log.error(`refresh failed: ${message}`);
-      setError(message);
-      setLoading(false);
-    }
+    await refreshWorktrees(setWorktrees, setLoading, setError);
   }, []);
 
   useEffect(() => {

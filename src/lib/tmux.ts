@@ -58,17 +58,24 @@ export async function killTmuxSession(sessionName: string): Promise<void> {
   log.info(`killTmuxSession: ${sessionName}`);
 }
 
-export async function capturePaneContent(sessionName: string, lines: number): Promise<string | null> {
-  try {
-    const { stdout } = await execa("tmux", [
-      "capture-pane", "-t", sessionName, "-p", "-J", "-e",
-      "-S", String(-lines),
-    ]);
-    // Strip trailing blank lines
-    return stdout.trimEnd();
-  } catch {
-    return null;
-  }
+/** A capture handle that exposes both the result promise and a kill function. */
+export interface CancellableCapture {
+  promise: Promise<string | null>;
+  kill: () => void;
+}
+
+export function capturePaneContent(sessionName: string, lines: number): CancellableCapture {
+  const subprocess = execa("tmux", [
+    "capture-pane", "-t", sessionName, "-p", "-J", "-e",
+    "-S", String(-lines),
+  ]);
+
+  const promise = subprocess.then(
+    (result) => result.stdout.trimEnd(),
+    () => null,
+  );
+
+  return { promise, kill: () => subprocess.kill() };
 }
 
 export function deriveSessionName(

@@ -10,7 +10,7 @@ import { openUrl } from "../lib/browser.js";
 import { cursorIndexFromDigit } from "../lib/navigation.js";
 import { loadConfig } from "../lib/config.js";
 import type { RemoteConfig } from "../lib/config.js";
-import { attachRemoteSession, createRemoteSession } from "../lib/remote.js";
+import { attachRemoteSession, createRemoteSession, captureRemotePaneContent } from "../lib/remote.js";
 import { log } from "../lib/log.js";
 import type { Worktree } from "../lib/types.js";
 import { execaSync } from "execa";
@@ -36,8 +36,16 @@ export function WorktreeList({
   const [warning, setWarning] = useState<string | null>(null);
   const { exit } = useApp();
 
-  const config = loadConfig();
-  const remoteConfig: RemoteConfig | undefined = config.remote;
+  const configRef = useRef<ReturnType<typeof loadConfig> | null>(null);
+  if (!configRef.current) {
+    configRef.current = loadConfig();
+  }
+  const remoteConfig: RemoteConfig | undefined = configRef.current.remote;
+
+  const repoRootRef = useRef<string | null>(null);
+  useEffect(() => {
+    repoRootRef.current = execaSync("git", ["rev-parse", "--show-toplevel"]).stdout.trim();
+  }, []);
 
   const [termSize, setTermSize] = useState({
     cols: process.stdout.columns || 80,
@@ -71,13 +79,14 @@ export function WorktreeList({
     if (!session) { setPaneContent(null); lastSession.current = null; return; }
     // Don't clear existing content — fetch silently and swap when ready
     lastSession.current = session;
-    capturePaneContent(session, previewLines).then((content) => {
+    const handle = selected?.remote
+      ? captureRemotePaneContent(selected.remote, session, previewLines)
+      : capturePaneContent(session, previewLines);
+    handle.promise.then((content) => {
       // Discard if cursor moved to a different session while fetching
       if (lastSession.current === session) setPaneContent(content);
-    }).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      log.error(`capturePaneContent failed for ${session}: ${msg}`);
     });
+    return () => { handle.kill(); };
   }, [selected?.tmuxSession, previewLines]);
 
   function showWarning(msg: string) {
@@ -95,8 +104,7 @@ export function WorktreeList({
     } else if (key.return || input === "t") {
       if (selected && !selected.isBare) {
         if (selected.remote) {
-          const config = loadConfig();
-          const remote = config.remote;
+          const remote = configRef.current?.remote;
           if (remote) {
             const sessionName = selected.tmuxSession ?? deriveSessionName(selected.branch, selected.path);
             const attach = selected.tmuxSession
@@ -146,6 +154,7 @@ export function WorktreeList({
     } else if (input === "c") {
       onCleanup();
     } else if (input === "r") {
+      configRef.current = loadConfig();
       onRefresh();
     } else if (input === "q") {
       exit();
@@ -199,14 +208,13 @@ export function WorktreeList({
     );
   }
 
-  if (transferTarget && remoteConfig) {
-    const repoRoot = execaSync("git", ["rev-parse", "--show-toplevel"]).stdout.trim();
+  if (transferTarget && remoteConfig && repoRootRef.current) {
     return (
       <Box borderStyle="round" borderColor="cyan" paddingX={2} paddingY={1}>
         <Transfer
           worktree={transferTarget}
           remote={remoteConfig}
-          repoRoot={repoRoot}
+          repoRoot={repoRootRef.current}
           onDone={() => {
             setTransferTarget(null);
             onRefresh();
