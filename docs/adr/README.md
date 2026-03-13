@@ -7,6 +7,9 @@ Document **important technical and architectural decisions** — context, trade-
 | # | Decision | Status |
 |---|----------|--------|
 | [001](./001-shell-wrapper-ipc.md) | Shell wrapper with temp file IPC for cd/tmux | Accepted |
+| [002](./002-debug-logging.md) | File-based debug logging to XDG state directory | Accepted |
+| [003](./003-remote-worktree-architecture.md) | Remote worktree support via SSH/mosh, git transfer protocol, and local bridging sessions | Accepted |
+| [004](./004-repo-branch-session-naming.md) | repo:branch tmux session naming to avoid cross-repo collisions | Accepted |
 
 ## When to Write an ADR
 
