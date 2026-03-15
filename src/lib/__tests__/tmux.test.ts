@@ -4,6 +4,7 @@ import {
   formatStatusLeft,
   switchToSession,
   deriveSessionName,
+  saveAndHookKeybinding,
   type TmuxSession,
   type CommandRunner,
 } from "../tmux.js";
@@ -55,7 +56,7 @@ describe("findSessionForWorktree", () => {
     expect(result).toMatchObject({ name: "feat-login" });
   });
 
-  it("matches new-format 'repo:branch' session by branch suffix", () => {
+  it("matches 'repo:branch' or 'repo_branch' session by branch suffix", () => {
     const newFormatSessions: TmuxSession[] = [
       { name: "langwatch:feat-login", path: "/tmp/y", attached: false },
     ];
@@ -65,6 +66,18 @@ describe("findSessionForWorktree", () => {
       "feat/login"
     );
     expect(result).toMatchObject({ name: "langwatch:feat-login" });
+  });
+
+  it("matches 'repo_branch' (underscore separator) session by branch suffix", () => {
+    const newFormatSessions: TmuxSession[] = [
+      { name: "langwatch_feat-login", path: "/tmp/y", attached: false },
+    ];
+    const result = findSessionForWorktree(
+      newFormatSessions,
+      "/some/path",
+      "feat/login"
+    );
+    expect(result).toMatchObject({ name: "langwatch_feat-login" });
   });
 
   it("matches new-format 'repo:branch' session by directory suffix", () => {
@@ -129,19 +142,19 @@ const openPr: PrInfo = {
 
 describe("deriveSessionName", () => {
   it("prefixes with repo name and replaces slashes in branch", () => {
-    expect(deriveSessionName("myrepo", "feat/new-login", "/repo/wt")).toBe("myrepo:feat-new-login");
+    expect(deriveSessionName("myrepo", "feat/new-login", "/repo/wt")).toBe("myrepo_feat-new-login");
   });
 
   it("uses last path segment when branch is null", () => {
-    expect(deriveSessionName("myrepo", null, "/repo/my-worktree")).toBe("myrepo:my-worktree");
+    expect(deriveSessionName("myrepo", null, "/repo/my-worktree")).toBe("myrepo_my-worktree");
   });
 
   it("falls back to orchard suffix for empty path when branch is null", () => {
-    expect(deriveSessionName("myrepo", null, "")).toBe("myrepo:orchard");
+    expect(deriveSessionName("myrepo", null, "")).toBe("myrepo_orchard");
   });
 
   it("includes repo name for plain branch names", () => {
-    expect(deriveSessionName("langwatch", "main", "/worktrees/main")).toBe("langwatch:main");
+    expect(deriveSessionName("langwatch", "main", "/worktrees/main")).toBe("langwatch_main");
   });
 });
 
@@ -288,5 +301,105 @@ describe("formatStatusLeft", () => {
     const readyPr: PrInfo = { ...openPr, reviewDecision: "APPROVED", checksStatus: "pass" };
     const result = formatStatusLeft("feat/login", readyPr);
     expect(result).toContain("\u2713 ready");
+  });
+});
+
+describe("saveAndHookKeybinding", () => {
+  function createKeybindRunner(opts: {
+    existingHook?: boolean;
+    existingBinding?: string | null;
+  }): CommandRunner & { calls: Array<[string, string[]]> } {
+    const calls: Array<[string, string[]]> = [];
+    const runner = async (cmd: string, args: string[]) => {
+      calls.push([cmd, args]);
+      if (args[0] === "show-hooks") {
+        if (opts.existingHook) {
+          return { stdout: "session-closed -> if-shell '! tmux has-session -t orchard" };
+        }
+        return { stdout: "" };
+      }
+      if (args[0] === "list-keys") {
+        if (opts.existingBinding) {
+          return { stdout: `bind-key -T prefix o ${opts.existingBinding}` };
+        }
+        return { stdout: "bind-key -T prefix n next-window" };
+      }
+      return { stdout: "" };
+    };
+    return Object.assign(runner, { calls });
+  }
+
+  it("saves original binding and sets restore hook when binding exists", async () => {
+    const runner = createKeybindRunner({ existingBinding: "select-pane -t 0" });
+    await saveAndHookKeybinding(runner);
+
+    const hookCall = runner.calls.find(([, args]) => args[0] === "set-hook");
+    expect(hookCall).toBeDefined();
+    const hookArg = hookCall![1][3];
+    expect(hookArg).toContain("bind-key o select-pane -t 0");
+    expect(hookArg).toContain("set-hook -gu session-closed");
+  });
+
+  it("sets unbind hook when no prior binding existed", async () => {
+    const runner = createKeybindRunner({ existingBinding: null });
+    await saveAndHookKeybinding(runner);
+
+    const hookCall = runner.calls.find(([, args]) => args[0] === "set-hook");
+    expect(hookCall).toBeDefined();
+    const hookArg = hookCall![1][3];
+    expect(hookArg).toContain("unbind-key o");
+    expect(hookArg).toContain("set-hook -gu session-closed");
+  });
+
+  it("is idempotent - skips when hook already registered", async () => {
+    const runner = createKeybindRunner({ existingHook: true, existingBinding: "select-pane -t 0" });
+    await saveAndHookKeybinding(runner);
+
+    const hookCalls = runner.calls.filter(([, args]) => args[0] === "set-hook");
+    expect(hookCalls).toHaveLength(0);
+  });
+
+  it("does not overwrite saved original binding on repeated calls", async () => {
+    const runner = createKeybindRunner({ existingHook: true });
+    await saveAndHookKeybinding(runner);
+
+    // Should only have the show-hooks call, nothing else
+    expect(runner.calls).toHaveLength(1);
+    expect(runner.calls[0]![1][0]).toBe("show-hooks");
+  });
+
+  it("uses if-shell to check orchard session existence in hook", async () => {
+    const runner = createKeybindRunner({ existingBinding: null });
+    await saveAndHookKeybinding(runner);
+
+    const hookCall = runner.calls.find(([, args]) => args[0] === "set-hook");
+    const hookArg = hookCall![1][3];
+    expect(hookArg).toContain("if-shell");
+    expect(hookArg).toContain("has-session -t orchard");
+  });
+
+  it("registers hook as global session-closed[99]", async () => {
+    const runner = createKeybindRunner({ existingBinding: null });
+    await saveAndHookKeybinding(runner);
+
+    const hookCall = runner.calls.find(([, args]) => args[0] === "set-hook");
+    expect(hookCall![1]).toContain("-g");
+    expect(hookCall![1]).toContain("session-closed[99]");
+  });
+
+  it("propagates error when set-hook fails", async () => {
+    const calls: Array<[string, string[]]> = [];
+    const runner: CommandRunner & { calls: typeof calls } = Object.assign(
+      async (cmd: string, args: string[]) => {
+        calls.push([cmd, args]);
+        if (args[0] === "show-hooks") return { stdout: "" };
+        if (args[0] === "list-keys") return { stdout: "" };
+        if (args[0] === "set-hook") throw new Error("tmux: set-hook failed");
+        return { stdout: "" };
+      },
+      { calls }
+    );
+
+    await expect(saveAndHookKeybinding(runner)).rejects.toThrow("set-hook failed");
   });
 });

@@ -259,7 +259,7 @@ export function WorktreeList({
 
       <Text> </Text>
 
-      {selected?.tmuxSession && paneContent !== null && <WorktreePreview paneContent={paneContent} lines={previewLines} sessionName={selected.tmuxSession} />}
+      {selected?.tmuxSession && paneContent !== null && <WorktreePreview paneContent={paneContent} lines={previewLines} branchName={selected.branch ?? selected.tmuxSession} />}
       {selected?.tmuxSession && paneContent === null && (
         <Box height={previewLines + 2} />
       )}
@@ -306,7 +306,7 @@ function KeyHint({ label, desc, dimmed }: { label: string; desc: string; dimmed?
   );
 }
 
-function WorktreePreview({ paneContent, lines, sessionName }: { paneContent: string | null; lines: number; sessionName: string }) {
+function WorktreePreview({ paneContent, lines, branchName }: { paneContent: string | null; lines: number; branchName: string }) {
   const contentLines = paneContent === null || paneContent === ""
     ? []
     : paneContent.split("\n").slice(-lines);
@@ -317,7 +317,7 @@ function WorktreePreview({ paneContent, lines, sessionName }: { paneContent: str
   ];
 
   return (
-    <TitledBox borderStyle="double" borderColor="red" titles={["PREVIEW", sessionName]} paddingX={2} paddingY={0} flexDirection="column">
+    <TitledBox borderStyle="double" borderColor="red" titles={["PREVIEW", branchName]} paddingX={2} paddingY={0} flexDirection="column">
       {paddedLines.map((line, i) => (
         <Text key={i} dimColor wrap="truncate">{line || " "}</Text>
       ))}

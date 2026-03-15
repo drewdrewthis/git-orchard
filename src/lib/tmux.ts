@@ -42,13 +42,13 @@ export function findSessionForWorktree(
   const byPath = sessions.find((s) => s.path === worktreePath);
   if (byPath) return byPath;
 
-  // Match by session name: support both new "repo:branch" format and legacy bare branch/dir names
+  // Match by session name: support "repo_branch" format and legacy bare branch/dir names
   const dirName = worktreePath.split("/").pop() || "";
   const branchSlug = branch ? branch.replace(/\//g, "-") : null;
   const byName = sessions.find((s) => {
-    // New format: "repo:branch" — extract the suffix after the last ":"
-    const colonIdx = s.name.lastIndexOf(":");
-    const nameSuffix = colonIdx >= 0 ? s.name.slice(colonIdx + 1) : s.name;
+    // Extract suffix after the last "_" (current format) or ":" (legacy format)
+    const sepIdx = Math.max(s.name.lastIndexOf("_"), s.name.lastIndexOf(":"));
+    const nameSuffix = sepIdx >= 0 ? s.name.slice(sepIdx + 1) : s.name;
     return (
       s.name === dirName ||
       nameSuffix === dirName ||
@@ -86,8 +86,8 @@ export function capturePaneContent(sessionName: string, lines: number): Cancella
 }
 
 /**
- * Derive a tmux session name in the format "repoName:branch" (or "repoName:dirName" for detached HEAD).
- * Uses `:` as the separator between repo name and branch slug.
+ * Derive a tmux session name in the format "repoName_branch" (or "repoName_dirName" for detached HEAD).
+ * Uses `_` as the separator (`:` is reserved by tmux as session:window delimiter).
  */
 export function deriveSessionName(
   repoName: string,
@@ -97,7 +97,7 @@ export function deriveSessionName(
   const suffix = branch
     ? branch.replace(/\//g, "-")
     : worktreePath.split("/").pop() || "orchard";
-  return `${repoName}:${suffix}`;
+  return `${repoName}_${suffix}`;
 }
 
 export interface SwitchToSessionOptions {
@@ -156,6 +156,9 @@ async function applySessionStyle(
   const statusLeft = formatStatusLeft(branch, pr);
   const t = ["-t", sessionName];
 
+  // Save the current "o" keybinding and set up cleanup hook (idempotent — only if hook not already set)
+  await saveAndHookKeybinding(runner);
+
   await Promise.all([
     runner("tmux", ["set-option", ...t, "status", "on"]),
     runner("tmux", ["set-option", ...t, "status-style", "bg=colour235,fg=colour248"]),
@@ -164,6 +167,56 @@ async function applySessionStyle(
     runner("tmux", ["set-option", ...t, "status-left", statusLeft]),
     runner("tmux", ["set-option", ...t, "status-right", CHEATSHEET]),
     runner("tmux", ["bind-key", "o", "switch-client", "-t", "orchard"]),
+  ]);
+}
+
+/**
+ * Save the current "o" keybinding before overwriting, and register a tmux
+ * session-closed hook that restores or unbinds when the orchard session is destroyed.
+ *
+ * Idempotent: if the hook is already set (from a prior invocation), this is a no-op
+ * so we don't overwrite the saved original binding.
+ *
+ * NOTE: This keybinding save/hook logic is intentionally duplicated in the shell
+ * function string in src/lib/shell.ts. They run in different execution contexts
+ * (shell vs Node) and cannot share code. Keep them in sync when changing the hook format.
+ */
+export async function saveAndHookKeybinding(runner: CommandRunner): Promise<void> {
+  // Check if we already set the hook (idempotency guard).
+  // The [99] suffix is included in the show-hooks output so the check still works.
+  try {
+    const { stdout } = await runner("tmux", ["show-hooks", "-g"]);
+    if (stdout.includes("session-closed") && stdout.includes("orchard")) {
+      return; // Hook already registered, don't overwrite the saved original
+    }
+  } catch {
+    // show-hooks may fail if no hooks are set — that's fine, continue
+  }
+
+  // Capture the current "o" binding
+  let originalCmd: string | null = null;
+  try {
+    const { stdout } = await runner("tmux", ["list-keys"]);
+    const match = stdout.split("\n").find(
+      (line) => /\bbind-key\s+(-T\s+prefix\s+)?o\b/.test(line)
+    );
+    if (match) {
+      // Extract command after "bind-key [-T prefix] o "
+      originalCmd = match.replace(/.*bind-key\s+(?:-T\s+\S+\s+)?o\s+/, "");
+    }
+  } catch {
+    // list-keys may fail — treat as no prior binding
+  }
+
+  // Register the session-closed hook using array index [99] to avoid colliding
+  // with lower-indexed user hooks (tmux 3.2+ supports named hook arrays).
+  const cleanupAction = originalCmd
+    ? `bind-key o ${originalCmd}; set-hook -gu session-closed[99]`
+    : `unbind-key o; set-hook -gu session-closed[99]`;
+
+  await runner("tmux", [
+    "set-hook", "-g", "session-closed[99]",
+    `if-shell '! tmux has-session -t orchard 2>/dev/null' '${cleanupAction}'`,
   ]);
 }
 

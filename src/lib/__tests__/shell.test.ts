@@ -68,6 +68,63 @@ describe("getShellFunction", () => {
   it("creates detached session when inside tmux and session does not exist", () => {
     expect(fn).toContain('tmux new-session -d -s "$session"');
   });
+
+  describe("keybinding lifecycle", () => {
+    it("queries the current 'o' key binding before overwriting", () => {
+      expect(fn).toContain("tmux list-keys");
+      // The list-keys query appears before bind-key o
+      const listKeysIdx = fn.indexOf("tmux list-keys");
+      const bindKeyIdx = fn.indexOf("bind-key o switch-client -t orchard");
+      expect(listKeysIdx).toBeLessThan(bindKeyIdx);
+    });
+
+    it("stores the original binding before calling bind-key o", () => {
+      expect(fn).toContain("_orchard_prev_bind");
+      const storeIdx = fn.indexOf("_orchard_prev_bind=");
+      const bindKeyIdx = fn.indexOf("bind-key o switch-client -t orchard");
+      expect(storeIdx).toBeLessThan(bindKeyIdx);
+    });
+
+    it("sets bind-key o switch-client -t orchard", () => {
+      expect(fn).toContain("bind-key o switch-client -t orchard");
+    });
+
+    it("registers a cleanup mechanism triggered on session destroy", () => {
+      expect(fn).toContain("set-hook -g session-closed");
+      expect(fn).toContain("has-session -t orchard");
+    });
+
+    it("cleanup restores the original binding when one existed", () => {
+      // When _orchard_prev_bind is non-empty, the hook runs bind-key o <original>
+      expect(fn).toContain("bind-key o $_orchard_restore_cmd");
+    });
+
+    it("cleanup unbinds when no original binding existed", () => {
+      expect(fn).toContain("unbind-key o");
+    });
+
+    it("only saves original binding on first session creation (idempotent)", () => {
+      // The save/hook logic is inside the "if ! tmux has-session" block.
+      // Verify that list-keys appears between the opening of that block and its closing fi.
+      const hasSessionMatch = fn.match(/if ! tmux has-session/);
+      expect(hasSessionMatch).not.toBeNull();
+      const blockStart = hasSessionMatch!.index!;
+
+      // Find the closing fi using a regex that matches "fi" on its own line
+      const afterBlock = fn.slice(blockStart);
+      const fiMatch = afterBlock.match(/\bfi\b/);
+      expect(fiMatch).not.toBeNull();
+      const blockEnd = blockStart + fiMatch!.index!;
+
+      const listKeysIdx = fn.indexOf("tmux list-keys");
+      expect(listKeysIdx).toBeGreaterThan(blockStart);
+      expect(listKeysIdx).toBeLessThan(blockEnd);
+    });
+
+    it("removes the hook itself during cleanup to avoid stale hooks", () => {
+      expect(fn).toContain("set-hook -gu session-closed");
+    });
+  });
 });
 
 describe("getInitInstructions", () => {
